@@ -48,14 +48,45 @@ var CONSTRUCTOR_COMPATIBILITY = true;
 var Montage = exports.Montage = function Montage() {};
 
 // to monkey patch a method on an object
-Montage.deprecate = deprecate.deprecateMethod(Montage, deprecate.deprecateMethod, "Montage.deprecate", "deprecate module's deprecateMethod");
+//Montage.deprecate = deprecate.deprecateMethod(Montage, deprecate.deprecateMethod, "Montage.deprecate", "deprecate module's deprecateMethod");
+Montage.deprecate = function(){};
 
 // too call a function immediately and log a deprecation warning
-Montage.callDeprecatedFunction = deprecate.deprecateMethod(Montage, deprecate.callDeprecatedFunction, "Montage.callDeprecatedFunction", "deprecate module's callDeprecatedFunction");
+//Montage.callDeprecatedFunction = deprecate.deprecateMethod(Montage, deprecate.callDeprecatedFunction, "Montage.callDeprecatedFunction", "deprecate module's callDeprecatedFunction");
+Montage.callDeprecatedFunction = function(){};
 
 var PROTO_IS_SUPPORTED = {}.__proto__ === Object.prototype;
 var PROTO_PROPERTIES_BLACKLIST = {"_montage_metadata": 1, "__state__": 1};
 var FUNCTION_PROPERTIES = Object.getOwnPropertyNames(Function);
+
+
+function PathChangeDescriptor(path,handler,beforeChange) {
+	this.path = path;
+	this.handler = handler;
+	this.path = path;
+	this.beforeChange = beforeChange;
+	return this;
+}
+
+Object.defineProperties(PathChangeDescriptor.prototype,{
+    path: {
+		value: null,
+		writable: true
+	},
+    handler: {
+		value: null,
+		writable: true
+	},
+    beforeChange: {
+		value: null,
+		writable: true
+	},
+    cancel: {
+		value: Function.noop,
+		writable: true
+	}
+});
+
 
 /**
  * Customizes a type with idiomatic JavaScript constructor and prototype
@@ -324,11 +355,13 @@ Object.defineProperty(Montage, "defineProperty", {
             } else {
                 defaults = _defaultAccessorProperty;
             }
-            for (var key in defaults) {
-                if (!(key in descriptor)) {
-                    descriptor[key] = defaults[key];
-                }
-            }
+			//Benoit, why not leverage shadwing capabilities from JS
+            // for (var key in defaults) {
+            //     if (!(key in descriptor)) {
+            //         descriptor[key] = defaults[key];
+            //     }
+            // }
+			descriptor.__proto__ = defaults;
         }
 
 
@@ -350,6 +383,8 @@ Object.defineProperty(Montage, "defineProperty", {
             getAttributeProperties(obj, SERIALIZABLE)[prop] = descriptor.serializable;
         }
 
+	/* DEPRECATING "distinct" in propertyDescriptors for goo */
+	/*
         // TODO replace this with Object.clone from collections - @kriskowal
         //this is added to enable value properties with [] or Objects that are new for every instance
         if (descriptor.distinct === true && typeof descriptor.value === "object") {
@@ -530,6 +565,9 @@ Object.defineProperty(Montage, "defineProperty", {
             })(prop, UNDERSCORE + prop, descriptor.value, obj);
 
         } else {
+	*/
+	
+	
             // clear the cache in any descendants that use this property for super()
             var superDependencies, i, j;
             if (obj._superDependencies) {
@@ -538,20 +576,22 @@ Object.defineProperty(Montage, "defineProperty", {
                         delete superDependencies[i]._superCache[prop + ".value"];
                     }
                 }
-                if (typeof descriptor.get === "function" && (superDependencies = obj._superDependencies[prop + ".get"])) {
-                    for (i=0,j=superDependencies.length;i<j;i++) {
-                        delete superDependencies[i]._superCache[prop + ".get"];
-                    }
-                }
-                if (typeof descriptor.set === "function" && (superDependencies = obj._superDependencies[prop + ".set"])) {
-                    for (i=0,j=superDependencies.length;i<j;i++) {
-                        delete superDependencies[i]._superCache[prop + ".set"];
-                    }
-                }
+				else {
+	                if (typeof descriptor.get === "function" && (superDependencies = obj._superDependencies[prop + ".get"])) {
+	                    for (i=0,j=superDependencies.length;i<j;i++) {
+	                        delete superDependencies[i]._superCache[prop + ".get"];
+	                    }
+	                }
+	                if (typeof descriptor.set === "function" && (superDependencies = obj._superDependencies[prop + ".set"])) {
+	                    for (i=0,j=superDependencies.length;i<j;i++) {
+	                        delete superDependencies[i]._superCache[prop + ".set"];
+	                    }
+	                }
+				}
             }
 
             return Object.defineProperty(obj, prop, descriptor);
-        }
+        /*}*/
     }
 });
 
@@ -566,12 +606,12 @@ Object.defineProperty(Montage, "defineProperty", {
  */
 Object.defineProperty(Montage, "defineProperties", {value: function(obj, properties) {
     if (typeof properties !== "object" || properties === null) {
-        throw new TypeError("Properties must be an object, not '" + properties + "'");
+         throw new TypeError("Properties must be an object, not '" + properties + "'");
     }
     for (var property in properties) {
-        if ("_bindingDescriptors" !== property) {
+        //if ("_bindingDescriptors" !== property) {
             this.defineProperty(obj, property, properties[property]);
-        }
+        //}
     }
     return obj;
 }});
@@ -613,11 +653,14 @@ Montage.defineProperty(Montage, "didCreate", {
     value: Function.noop
 });
 
+//Montage.defineProperty(Function.prototype, "_superPropertyType", {value:null});
+//Montage.defineProperty(Function.prototype, "_superPropertyName", {value:null});
+
 var getSuper = function(object, method) {
     var propertyNames, proto, i, propCount, propertyName, func, context, foundSuper, property;
     if (!(method._superPropertyName && method._superPropertyType)) {
-        Montage.defineProperty(method, "_superPropertyType", {value:null});
-        Montage.defineProperty(method, "_superPropertyName", {value:null});
+        Montage.defineProperty(method, "_superPropertyType", {value: null});
+        Montage.defineProperty(method, "_superPropertyName", {value: null});
         context = object;
         while (!foundSuper && context !== null) {
             propertyNames = Object.getOwnPropertyNames(context);
@@ -663,8 +706,14 @@ var superImplementation = function super_() {
     if (typeof superImplementation.caller !== "function") {
         throw new TypeError("Can't get super without caller. Use this.superForValue(methodName) if using strict mode.");
     }
-    var superFunction = getSuper(this, superImplementation.caller);
-    return typeof superFunction === "function" ? superFunction.bind(this) : Function.noop;
+    var superFunction = getSuper(this, superImplementation.caller), self = this;
+//console.log('caller', superImplementation.caller);
+//console.log('superFunction1', superFunction);
+	//Removing bind()
+    return typeof superFunction === "function" ? function() {
+        return superFunction.apply(self, arguments);
+    } : Function.noop;
+    //return typeof superFunction === "function" ? superFunction.bind(this) : Function.noop;
 };
 
 Montage.defineProperty(Montage, "_superContext", {
@@ -696,6 +745,7 @@ var superForImplementation = function (object, propertyType, propertyName) {
             context = Object.getPrototypeOf(context);
         }
     }
+//console.log(context, object, context == object);
 
     cacheObject = context.constructor;
 
@@ -922,6 +972,13 @@ var _functionInstanceMetadataDescriptor = {
  * is the identifier for the module in that package, and `isInstance` discerns
  * constructors and prototypes from instances.
  */
+Object.defineProperty(Montage.prototype, "_montage_metadata", {
+     enumerable: false,
+     // this object needs to be overriden by the SerializationCompiler because this particular code might be executed on an exported object before the Compiler takes action, for instance, if this function is called within the module definition itself (happens with __core__).
+     writable: true,
+     value: null
+ });
+
 Montage.defineProperty(Montage, "getInfoForObject", {
     value: function(object) {
         var metadata;
@@ -929,7 +986,7 @@ Montage.defineProperty(Montage, "getInfoForObject", {
 
         //jshint -W106
 
-        if (hasOwnProperty.call(object, "_montage_metadata")) {
+        if (object.hasOwnProperty("_montage_metadata")) {
             return object._montage_metadata;
         } else {
             metadata = object._montage_metadata || (object.constructor && object.constructor._montage_metadata) || null;
@@ -947,12 +1004,7 @@ Montage.defineProperty(Montage, "getInfoForObject", {
             }
 
             try {
-                return Object.defineProperty(object, "_montage_metadata", {
-                    enumerable: false,
-                    // this object needs to be overriden by the SerializationCompiler because this particular code might be executed on an exported object before the Compiler takes action, for instance, if this function is called within the module definition itself (happens with __core__).
-                    writable: true,
-                    value: Object.create(metadata, instanceMetadataDescriptor)
-                })._montage_metadata;
+                return (object._montage_metadata = Object.create(metadata, instanceMetadataDescriptor));
             } catch(e) {
                 // NOTE Safari (as of Version 5.0.2 (6533.18.5, r78685)
                 // doesn't seem to allow redefining an existing property on a DOM Element
@@ -1035,7 +1087,9 @@ var uuidGetGenerator = function() {
 };
 
 var defaultUuidGet = function defaultUuidGet() {
-    return (hasOwnProperty.call(this, "_uuid") ? this._uuid : uuidGetGenerator.call(this));
+    //return (this.hasOwnProperty("_uuid") ? this._uuid : uuidGetGenerator.call(this));
+    //return this._uuid ? this._uuid : (this._uuid = UUID.generate());
+    return this.hasOwnProperty("_uuid") ? this._uuid : this._uuid = UUID.generate();
 };
 
 /**
@@ -1339,9 +1393,6 @@ Montage.defineProperties(Montage.prototype, bindingPropertyDescriptors);
 
 // Paths
 
-var WeakMap = require("collections/weak-map");
-var Map = require("collections/map");
-
 var parse = require("frb/parse");
 var evaluate = require("frb/evaluate");
 var assign = require("frb/assign");
@@ -1352,7 +1403,25 @@ var Scope = require("frb/scope");
 var Observers = require("frb/observers");
 var autoCancelPrevious = Observers.autoCancelPrevious;
 
-var pathChangeDescriptors = new WeakMap();
+
+Object.defineProperties(Scope.prototype, {
+	beforeChange: {
+		value:null,
+		writable: true
+	},
+	parameters: {
+		value:null,
+		writable: true
+	},
+	document: {
+		value:null,
+		writable: true
+	},
+	components: {
+		value:null,
+		writable: true
+	}
+});
 
 var pathPropertyDescriptors = {
 
@@ -1477,10 +1546,8 @@ var pathPropertyDescriptors = {
      */
     getPathChangeDescriptors: {
         value: function () {
-            if (!pathChangeDescriptors.has(this)) {
-                pathChangeDescriptors.set(this, {});
-            }
-            return pathChangeDescriptors.get(this);
+	
+			return this.__pathChangeDescriptors__ || (this.__pathChangeDescriptors__ = {});
         }
     },
 
@@ -1500,10 +1567,10 @@ var pathPropertyDescriptors = {
     getPathChangeDescriptor: {
         value: function (path, handler, beforeChange) {
             var descriptors = Montage.getPathChangeDescriptors.call(this);
-            if (!Object.owns(descriptors, path)) {
+            if (!descriptors.hasOwnProperty(path)) {
                 descriptors[path] = {
-                    willChangeListeners: new Map(), // handler to descriptor
-                    changeListeners: new Map()
+                    willChangeListeners: {}, // handler to descriptor
+                    changeListeners: {}
                 };
             }
 
@@ -1514,16 +1581,11 @@ var pathPropertyDescriptors = {
                 descriptors = descriptors.changeListeners;
             }
 
-            if (!descriptors.has(handler)) {
-                descriptors.set(handler, {
-                    path: path,
-                    handler: handler,
-                    beforeChange: beforeChange,
-                    cancel: Function.noop
-                });
+            if (!(handler.uuid in descriptors)) {
+                descriptors[handler.uuid] = new PathChangeDescriptor(path,handler,beforeChange);
             }
 
-            return descriptors.get(handler);
+            return descriptors[handler.uuid];
         }
     },
 
@@ -1578,11 +1640,11 @@ var pathPropertyDescriptors = {
                 };
             } else if (methodName) {
                 emit = function (value) {
-                    return handler[methodName].call(handler, value, path, self);
+                    return handler[methodName](value, path, self);
                 };
             } else if (handler.handlePathChange) {
                 emit = function (value) {
-                    return handler.handlePathChange.call(handler, value, path, self);
+                    return handler.handlePathChange(value, path, self);
                 };
             } else if (typeof handler === "function") {
                 emit = function (value) {
@@ -1594,11 +1656,12 @@ var pathPropertyDescriptors = {
 
             var observe = compileObserver(syntax);
             var scope = new Scope(this);
-            scope.beforeChange = beforeChange;
-            scope.parameters = parameters;
-            scope.document = document;
-            scope.components = components;
-            var cancel = observe(autoCancelPrevious(emit), scope);
+            if(beforeChange) scope.beforeChange = beforeChange;
+            if(parameters) scope.parameters = parameters;
+            if(document) scope.document = document;
+            if(components) scope.components = components;
+            
+			var cancel = observe(autoCancelPrevious(emit), scope);
 
             descriptor.cancel = cancel;
 
@@ -1627,21 +1690,18 @@ var pathPropertyDescriptors = {
             var descriptorsForObject = Montage.getPathChangeDescriptors.call(this);
             var phase = beforeChange ? "willChangeListeners" : "changeListeners";
 
-            if (!Object.owns(descriptorsForObject, path)) {
+            if (!descriptorsForObject.hasOwnProperty(path)) {
                 throw new Error("Can't find " + phase + " for " + JSON.stringify(path));
             }
             var descriptorsForPath = descriptorsForObject[path];
             var descriptorsForPhase = descriptorsForPath[phase];
-            if (!descriptorsForPhase.has(handler)) {
+            if (!(handler.uuid in descriptorsForPhase)) {
                 throw new Error("Can't find " + phase + " for " + JSON.stringify(path));
             }
-            var descriptor = descriptorsForPhase.get(handler);
+            var descriptor = descriptorsForPhase[handler.uuid];
             descriptor.cancel();
-            descriptorsForPhase["delete"](handler);
-            if (
-                descriptorsForPath.willChangeListeners.length === 0 &&
-                descriptorsForPath.changeListeners.length === 0
-            ) {
+            delete descriptorsForPhase[handler.uuid];
+            if (descriptorsForPath.willChangeListeners.length === 0 && descriptorsForPath.changeListeners.length === 0) {
                 delete descriptorsForObject[path];
             }
             // if there are no other handlers

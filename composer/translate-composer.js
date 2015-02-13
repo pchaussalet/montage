@@ -540,7 +540,7 @@ var TranslateComposer = exports.TranslateComposer = Composer.specialize(/** @len
      **/
     _shouldPreventDefault: {
         value: function(event) {
-            return !!event.target.tagName && TranslateComposer._NATIVE_ELEMENTS.indexOf(event.target.tagName) === -1 && !event.target.isContentEditable;
+            return !!event.target.tagName && this._NATIVE_ELEMENTS.indexOf(event.target.tagName) === -1 && !event.target.isContentEditable;
         }
     },
 
@@ -1079,7 +1079,7 @@ var TranslateComposer = exports.TranslateComposer = Composer.specialize(/** @len
                 this._element.addEventListener("mousedown", this, false);
 
                 var wheelEventName;
-                if (typeof window.onwheel !== "undefined" || typeof window.WheelEvent !== "undefined" ){
+                if (typeof window.onwheel !== "undefined"){
                     wheelEventName = "wheel";
                 } else {
                     wheelEventName = "mousewheel";

@@ -11,7 +11,7 @@
  */
 var Montage = require("./core").Montage,
     MessageFormat = require("./messageformat"),
-    logger = require("./logger").logger("localizer"),
+    //logger = require("./logger").logger("localizer"),
     Serializer = require("./serialization").Serializer,
     Deserializer = require("./serialization").Deserializer,
     Promise = require("./promise").Promise,
@@ -21,6 +21,8 @@ var Montage = require("./core").Montage,
     stringify = require("frb/stringify"),
     expand = require("frb/expand"),
     Scope = require("frb/scope");
+var logger = {"isDebug":false};
+
 
 // Add all locales to MessageFormat object
 MessageFormat.locale = require("./messageformat-locale");

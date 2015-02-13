@@ -144,20 +144,27 @@ var ObjectProperty = exports.ObjectProperty = Montage.specialize( /** @lends Obj
                 storageDefinition = null;
             if (!prototype.hasOwnProperty(storageKey)) {
                 if (attribute.isToMany) {
-                    storageDefinition = {
-                        value:[],
+					var privateStorageKey = "_"+storageKey;
+	                Montage.defineProperty(prototype, privateStorageKey, {
+                        value:null,
                         enumerable: false,
-                        serializable: true,
-                        distinct: true
-                    };
+                        serializable: true
+                    });
+	                Montage.defineProperty(prototype, storageKey, {
+						get: function() {
+							return this[privateStorageKey] || (this[privateStorageKey] = []);
+						},
+                        enumerable: false,
+                        serializable: true
+					});
+
                 } else {
-                    storageDefinition = {
+   	                Montage.defineProperty(prototype, storageKey, {
                         value: null,
                         enumerable: false,
                         serializable: true
-                    };
-                }
-                Montage.defineProperty(prototype, storageKey, storageDefinition);
+                    });
+             }
             } else {
                 if (logger.isError) {
                     logger.error("We have an issue here. The developer should not override the storage value for " + storageKey + ".");
@@ -248,20 +255,26 @@ var ObjectProperty = exports.ObjectProperty = Montage.specialize( /** @lends Obj
                 storedValueDefinition = null;
             if (!prototype.hasOwnProperty(storedValueKey)) {
                 if (attribute.isToMany) {
-                    storedValueDefinition = {
-                        value:[],
+					var privateStorageKey = "_"+storedValueKey;
+	                Montage.defineProperty(prototype, privateStorageKey, {
+                        value:null,
                         enumerable: false,
-                        serializable: false,
-                        distinct: true
-                    };
+                        serializable: true
+                    });
+	                Montage.defineProperty(prototype, storedValueKey, {
+						get: function() {
+							return this[privateStorageKey] || (this[privateStorageKey] = []);
+						},
+                        enumerable: false,
+                        serializable: true,
+					});
                 } else {
-                    storedValueDefinition = {
+ 	                Montage.defineProperty(prototype, storedValueKey, {
                         value: null,
                         enumerable: false,
                         serializable: false
-                    };
-                }
-                Montage.defineProperty(prototype, storedValueKey, storedValueDefinition);
+                    });
+               }
             } else {
                 if (logger.isError) {
                     logger.error("We have an issue here. The developer should not override the stored value for " + storedValueKey + ".");

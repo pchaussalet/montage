@@ -33,6 +33,8 @@ var Binder = exports.Binder = Montage.specialize( /** @lends Binder# */ {
             this.binderModuleId = null;
             this.isDefault = false;
             this._blueprintForPrototypeTable = {};
+		    this._blueprints = [];
+
             return this;
         }
     },
@@ -110,8 +112,7 @@ var Binder = exports.Binder = Montage.specialize( /** @lends Binder# */ {
     },
 
     _blueprintForPrototypeTable: {
-        distinct:true,
-        value: {}
+        value: null
     },
 
     /**
@@ -148,8 +149,7 @@ var Binder = exports.Binder = Montage.specialize( /** @lends Binder# */ {
     },
 
     _blueprints: {
-        distinct: true,
-        value: []
+        value: null
     },
 
     /**

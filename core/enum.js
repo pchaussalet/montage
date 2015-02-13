@@ -3,8 +3,9 @@
  * @requires montage/core/core
  * @requires montage/core/logger
  */
-var Montage = require("./core").Montage,
-    logger = require("./logger").logger("enum");
+var Montage = require("./core").Montage;
+    //logger = require("./logger").logger("enum");
+var logger = {"error":function(){}};
 
 /**
  * @class Enum

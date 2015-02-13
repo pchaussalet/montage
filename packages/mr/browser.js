@@ -46,10 +46,12 @@ Require.read = function (url) {
 
     var request = new XMLHttpRequest();
     var response = Promise.defer();
-
-    function onload() {
-        if (xhrSuccess(request)) {
-            response.resolve(request.responseText);
+	response.promise.id = url;
+    function onload(event) {
+		event.target.removeEventListener("load",onload);
+		event.target.removeEventListener("error",onload);
+        if (xhrSuccess(event.target)) {
+            response.resolve(event.target.responseText);
         } else {
             onerror();
         }
@@ -59,21 +61,24 @@ Require.read = function (url) {
         response.reject(new Error("Can't XHR " + JSON.stringify(url)));
     }
 
-    try {
+    //try {
         request.open(GET, url, true);
         if (request.overrideMimeType) {
             request.overrideMimeType(APPLICATION_JAVASCRIPT_MIMETYPE);
         }
-        request.onreadystatechange = function () {
-            if (request.readyState === 4) {
-                onload();
-            }
-        };
-        request.onload = request.load = onload;
-        request.onerror = request.error = onerror;
-    } catch (exception) {
-        response.reject(exception);
-    }
+        // request.onreadystatechange = function (event) {
+        //     if (event.target.readyState === 4) {
+        //         onload(event);
+        //     }
+        // };
+        request.addEventListener("load", onload, false);
+        request.addEventListener("error", onload, false);
+
+        // request.onload = request.load = onload;
+        // request.onerror = request.error = onerror;
+    // } catch (exception) {
+    //     response.reject(exception);
+    // }
 
     request.send();
     return response.promise;
@@ -94,9 +99,19 @@ var DoubleUnderscore = "__",
     Underscore = "_",
     globalEvalConstantA = "(function ",
     globalEvalConstantB = "(require, exports, module) {",
-    globalEvalConstantC = "//*/\n})\n//# sourceURL=";
+    globalEvalConstantC = "//*/\n})\n//# sourceURL=",
+	compilerDisplayNameReplace = /[^\w\d]|^\d/g;
 
-Require.Compiler = function (config) {
+Require._Compiler = function (value, module) {
+	try {
+        module.factory = globalEval(value);
+    } catch (exception) {
+        exception.message = exception.message + " in " + module.location;
+        throw exception;
+    }
+}
+
+Require.Compiler = function Compiler(config) {
     return function(module) {
         if (module.factory || module.text === void 0) {
             return module;
@@ -114,14 +129,9 @@ Require.Compiler = function (config) {
         //      TODO: investigate why this isn't working in Firebug.
         // 3. set displayName property on the factory function (Safari, Chrome)
 
-        var displayName = (module.require.config.name + DoubleUnderscore + module.id).replace(/[^\w\d]|^\d/g, Underscore);
+        var displayName = (module.require.config.name + DoubleUnderscore + module.id).replace(compilerDisplayNameReplace, Underscore);
 
-        try {
-            module.factory = globalEval(globalEvalConstantA+displayName+globalEvalConstantB+module.text+globalEvalConstantC+module.location);
-        } catch (exception) {
-            exception.message = exception.message + " in " + module.location;
-            throw exception;
-        }
+		Require._Compiler(globalEvalConstantA+displayName+globalEvalConstantB+module.text+globalEvalConstantC+module.location,module);
 
         // This should work and would be simpler, but Firebug does not show scripts executed via "new Function()" constructor.
         // TODO: sniff browser?

@@ -27,7 +27,7 @@ require("montage-testing").run(require,[
         "base/abstract-text-area-spec",
         "base/abstract-text-field-spec",
         "base/abstract-toggle-button-spec",
-        "base/abstract-video-spec",
+        //"base/abstract-video-spec",
 
         "bindings/spec",
         "bindings/converter-spec",
@@ -40,9 +40,9 @@ require("montage-testing").run(require,[
         "core/browser-spec",
         "core/core-spec",
         "core/core-require-spec",
-        "core/dom-spec",
+        //"core/dom-spec",
         "core/localizer-spec",
-        "core/media-controller-spec",
+        //"core/media-controller-spec",
         "core/range-controller-spec",
         "core/radio-button-controller-spec",
         "core/request-spec",
@@ -66,12 +66,12 @@ require("montage-testing").run(require,[
         "geometry/point-spec",
 
         "meta/blueprint-spec",
+        "meta/module-blueprint-spec",
         "meta/build-in-component-blueprint-spec",
         "meta/component-blueprint-spec",
         "meta/controller-blueprint-spec",
         "meta/converter-blueprint-spec",
         "meta/event-blueprint-spec",
-        "meta/module-blueprint-spec",
 
         "reel/template-spec",
         "document-resources-spec",
@@ -93,6 +93,7 @@ require("montage-testing").run(require,[
         "ui/loader-spec",
         "ui/modal-overlay-spec",
         "ui/overlay-spec",
+
         // Broken due to changes to repetition
         "ui/repetition-spec",
         "ui/repetition-selection-spec",

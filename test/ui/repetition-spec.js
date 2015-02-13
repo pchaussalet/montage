@@ -329,12 +329,14 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
                     testPage.waitForComponentDraw(delegate.repetition2);
                     runs(function() {
                         var inputs = querySelectorAll(".list2 > li > input.textfield1");
-                        for (var i = 0, input; i < 4; i++) {
-
-                            expect(inputs[i].value).toBe("item " + (i+1));
-                        }
+                        expect(inputs.length).toBe(4);
+                        expect(inputs[0].value).toBe("item 1");
+                        expect(inputs[1].value).toBe("item 2");
+                        expect(inputs[2].value).toBe("item 3");
+                        expect(inputs[3].value).toBe("item 4");
                     });
                 });
+
             });
 
             it("should replace an item of the repetition", function() {
@@ -717,7 +719,6 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
             });
         });
 
-
         describe("with a content controller", function() {
             it("it should have as many iterations as the arraycontroller's initial organizedObjects", function() {
                 expect(querySelectorAll(".repetitionController > li").length).toBe(3);
@@ -736,7 +737,7 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
 
         describe("Repetition in a external component", function() {
             it("should draw the repetition", function() {
-                var eventManager = testPage.window.document.application.eventManager;
+                var eventManager = application.eventManager;
 
                 var componentit1 = eventManager.eventHandlerForElement(querySelector(".componentrep1"));
                 var componentit2 = eventManager.eventHandlerForElement(querySelector(".componentrep2"));
@@ -826,9 +827,9 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
                 runs(function () {
                     var content = repetition.element.children;
                     expect(content.length).toBe(3);
-                    for (var i = 0; i < content.length; i++) {
-                        expect(content[i].textContent).toBe("X");
-                    }
+                    expect(content[0].textContent).toBe("X");
+                    expect(content[1].textContent).toBe("X");
+                    expect(content[2].textContent).toBe("X");
 
                     var newTemplate = repetition.innerTemplate.clone();
 
@@ -840,9 +841,9 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
                 runs(function () {
                     var content = repetition.element.children;
                     expect(content.length).toBe(3);
-                    for (var i = 0; i < content.length; i++) {
-                        expect(content[i].textContent).toBe("Y");
-                    }
+                    expect(content[0].textContent).toBe("Y");
+                    expect(content[1].textContent).toBe("Y");
+                    expect(content[2].textContent).toBe("Y");
                 });
             });
 
@@ -910,7 +911,7 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
         it("should draw inner repetitions with their original objects value", function() {
             var lis = querySelectorAll(".list17 > li");
             expect(lis.length).toBe(3*2);
-        })
+        });
 
         describe("iteration template", function() {
             it("should expand template star parameter", function() {
@@ -919,9 +920,8 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
                     serialization = template.getSerialization(),
                     labels = serialization.getSerializationLabels();
 
+                expect(template.getElementById("listParametersText")).toBeDefined();
                 expect(labels).toContain("listParametersText");
-                expect(template.getElementById("listParametersText"))
-                    .toBeDefined();
             });
 
             it("should expand template star parameter with multiple expansions", function() {
@@ -935,10 +935,8 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
                 expect(labels).toContain("decoratorText");
                 expect(labels).toContain("listParametersDecoratorText");
 
-                expect(template.getElementById("text"))
-                    .toBeDefined();
-                expect(template.getElementById("listParametersDecoratorText"))
-                    .toBeDefined();
+                expect(template.getElementById("text")).toBeDefined();
+                expect(template.getElementById("listParametersDecoratorText")).toBeDefined();
 
                 expect("decoratorText" in instances).toBeTruthy();
             });
@@ -956,10 +954,8 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
                 expect(labels).toContain("decoratorText");
                 expect(labels).toContain("listParametersDecoratorCollidingText");
 
-                expect(template.getElementById("text"))
-                    .toBeDefined();
-                expect(template.getElementById("listParametersDecoratorCollidingText"))
-                    .toBeDefined();
+                expect(template.getElementById("text")).toBeDefined();
+                expect(template.getElementById("listParametersDecoratorCollidingText")).toBeDefined();
 
                 expect("decoratorText" in instances).toBeTruthy();
 
@@ -1049,26 +1045,14 @@ TestPageLoader.queueTest("repetition/repetition", function(testPage) {
                 });
             });
         });
+
         describe("objectAtCurrentIteration property", function () {
             it("should be still working", function () {
                 var elements = querySelectorAll(".objectAtCurrentIteration");
                 expect(elements.length).toBe(1);
             });
-            it("should cause a deprecation warning", function () {
-                var repetition = querySelectorAll(".repetitionWithObjectAtCurrentIteration")[0].component;
-                expectConsoleCallsFrom(function () {
-                    repetition.observeProperty("objectAtCurrentIteration", Function.noop, Function.noop );
-                }, testPage.window, "warn").toHaveBeenCalledWith("objectAtCurrentIteration is deprecated, use :iteration.object instead.", "");
-            });
         });
-        describe("contentAtCurrentIteration property", function () {
-            it("should cause a deprecation warning", function () {
-                var repetition = querySelectorAll(".repetitionWithObjectAtCurrentIteration")[0].component;
-                expectConsoleCallsFrom(function () {
-                    repetition.observeProperty("contentAtCurrentIteration", Function.noop, Function.noop );
-                }, testPage.window, "warn").toHaveBeenCalledWith("contentAtCurrentIteration is deprecated, use :iteration.object instead.", "");
-            });
-        });
+
         describe("currentIteration property", function () {
             it("should cause a deprecation warning", function () {
                 var repetition = querySelectorAll(".repetitionWithObjectAtCurrentIteration")[0].component;

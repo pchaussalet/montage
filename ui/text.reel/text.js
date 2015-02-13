@@ -19,13 +19,40 @@ exports.Text = Component.specialize( /** @lends Text# */ {
 
     constructor: {
         value: function Text() {
-            this.super();
+            //this.super();
         }
     },
 
     hasTemplate: {
         value: false
     },
+
+    canDraw: {
+        value: function() {
+            return true;
+        }
+    },
+
+    _prepareCanDraw: {
+        enumerable: false,
+        value: function _prepareCanDraw() {
+            //this.ownerComponent.canDrawGate.setField(this.uuid, true);
+			this.canDrawGate.setField("componentTreeLoaded", true);
+            
+        }
+    },
+
+    shouldLoadComponentTree: {
+        value: false
+    },
+
+	// _isComponentExpanded:  {
+	//         value: true
+	//     },
+
+	// _isComponentTreeLoaded:  {
+	//         value: true
+	//     },
 
     _value: {
         value: null

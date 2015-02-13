@@ -1418,8 +1418,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                parametersTemplate.initWithHtml(parametersHtml),
-                argumentsTemplate.initWithHtml(argumentsHtml)
+                parametersTemplate.initWithHtml(parametersHtml, require),
+                argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var repetition,
                     args;
@@ -1447,8 +1447,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                parametersTemplate.initWithHtml(parametersHtml),
-                argumentsTemplate.initWithHtml(argumentsHtml)
+                parametersTemplate.initWithHtml(parametersHtml, require),
+                argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var repetition,
                     args;
@@ -1475,8 +1475,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                parametersTemplate.initWithHtml(parametersHtml),
-                argumentsTemplate.initWithHtml(argumentsHtml)
+                parametersTemplate.initWithHtml(parametersHtml, require),
+                argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var repetition,
                     side;
@@ -1505,8 +1505,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                parametersTemplate.initWithHtml(parametersHtml),
-                argumentsTemplate.initWithHtml(argumentsHtml)
+                parametersTemplate.initWithHtml(parametersHtml, require),
+                argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var side,
                     leftSideElementId,
@@ -1541,8 +1541,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                parametersTemplate.initWithHtml(parametersHtml),
-                argumentsTemplate.initWithHtml(argumentsHtml)
+                parametersTemplate.initWithHtml(parametersHtml, require),
+                argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var expansionResult;
 
@@ -1571,8 +1571,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                parametersTemplate.initWithHtml(parametersHtml),
-                argumentsTemplate.initWithHtml(argumentsHtml)
+                parametersTemplate.initWithHtml(parametersHtml, require),
+                argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var collisionTable;
 
@@ -1599,8 +1599,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                parametersTemplate.initWithHtml(parametersHtml),
-                argumentsTemplate.initWithHtml(argumentsHtml)
+                parametersTemplate.initWithHtml(parametersHtml, require),
+                argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var expansionResult,
                     labelsCollisions,
@@ -1648,8 +1648,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                parametersTemplate.initWithHtml(parametersHtml),
-                argumentsTemplate.initWithHtml(argumentsHtml)
+                parametersTemplate.initWithHtml(parametersHtml, require),
+                argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var serializationObject;
 
@@ -1680,8 +1680,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                    parametersTemplate.initWithHtml(parametersHtml),
-                    argumentsTemplate.initWithHtml(argumentsHtml)
+                    parametersTemplate.initWithHtml(parametersHtml, require),
+                    argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var serializationObject;
 
@@ -1713,8 +1713,8 @@ describe("reel/template-spec", function() {
             };
 
             return Promise.all([
-                    parametersTemplate.initWithHtml(parametersHtml),
-                    argumentsTemplate.initWithHtml(argumentsHtml)
+                    parametersTemplate.initWithHtml(parametersHtml, require),
+                    argumentsTemplate.initWithHtml(argumentsHtml, require)
             ]).then(function() {
                 var serializationObject;
 

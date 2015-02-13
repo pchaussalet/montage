@@ -364,8 +364,8 @@ describe("meta/blueprint-spec", function () {
 
             it("removes an existing blueprint from it's previous owner", function () {
                 var oldBlueprint = new Blueprint().initWithName("old");
-
                 var eventBlueprint = new EventBlueprint().initWithNameAndBlueprint("event", oldBlueprint);
+
                 blueprint.addEventBlueprint(eventBlueprint);
 
                 expect(eventBlueprint.owner).toBe(blueprint);

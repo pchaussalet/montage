@@ -468,8 +468,9 @@ var NONE = Event.NONE,
 var EventManager = exports.EventManager = Montage.specialize(/** @lends EventManager# */ {
     constructor: {
         value: function EventManager() {
-            this.super();
-        }
+            //this.super();
+ 			this._claimedPointers = {};
+		}
     },
     // Utility
     eventDefinitions: {
@@ -781,6 +782,7 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
             Montage.defineProperty(aWindow.Element.prototype, "component", {
                 get: function() {
                     return defaultEventManager._elementEventHandlerByUUID[this.eventHandlerUUID];
+                    //return this.eventHandlerUUID;
                 },
                 enumerable: false
             });
@@ -795,7 +797,21 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
             if (/loaded|complete|interactive/.test(aWindow.document.readyState)) {
                 this._finalizeWindowRegistration(aWindow);
             } else {
-                aWindow.document.addEventListener("DOMContentLoaded", this, true);
+				var self = this;
+                aWindow.document.addEventListener("DOMContentLoaded", 
+				function DOMContentLoadedCallback(event) {
+					var loadedWindow = event.target.defaultView;
+	                if (loadedWindow && self._windowsAwaitingFinalRegistration[loadedWindow.uuid]) {
+	                    self._finalizeWindowRegistration(loadedWindow);
+	                    // Stop listening for DOMContentLoaded on this target
+	                    // Otherwise the eventManager's handleEvent will be called
+	                    // again from within here when the eventManager is found
+	                    // to be a listener for this event when we find the listeners
+	                    event.target.removeEventListener("DOMContentLoaded", DOMContentLoadedCallback, true);
+						self = null;
+	                }
+	                
+				}, true);
             }
         }
     },
@@ -1383,32 +1399,43 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
      */
     methodNameForBubblePhaseOfEventType: {
         enumerable: false,
-        value: (function(_methodNameForBubblePhaseByEventType_) {
+        value: (function(handle,_methodNameForBubblePhaseByEventType_,_identifierMethodNameForBubblePhaseByEventType_) {
             return function(eventType, identifier) {
-                var eventTypeKey = identifier ? eventType + "+" + identifier : eventType;
-                return _methodNameForBubblePhaseByEventType_[eventTypeKey] || (_methodNameForBubblePhaseByEventType_[eventTypeKey] = ("handle" + (identifier ? identifier.toCapitalized() : "") + eventType.toCapitalized()));
-            };
-        })({})
+				if(!identifier) {
+	                return _methodNameForBubblePhaseByEventType_[eventType] || (_methodNameForBubblePhaseByEventType_[eventType] = handle + eventType.toCapitalized());
+				}
+				else {
+					return ( _identifierMethodNameForBubblePhaseByEventType_[eventType] || (_identifierMethodNameForBubblePhaseByEventType_[eventType] = {}) )[identifier] || (_identifierMethodNameForBubblePhaseByEventType_[eventType][identifier] = handle + identifier.toCapitalized() + eventType.toCapitalized());
+           		}
+ 			};
+        })("handle",{},{})
     },
 
     _methodNameForCapturePhaseByEventType_: {
         value:{}
     },
+    _identifierMethodNameForCapturePhaseByEventType_: {
+        value:{}
+    },
     methodNameForCapturePhaseOfEventType: {
         enumerable: false,
-        value: (function(_methodNameForCapturePhaseByEventType_) {
+        value: (function(capture, _methodNameForCapturePhaseByEventType_,_identifierMethodNameForCapturePhaseByEventType_) {
             return function(eventType, identifier) {
-                var eventTypeKey = identifier ? eventType + "+" + identifier : eventType;
-                return _methodNameForCapturePhaseByEventType_[eventTypeKey] || (_methodNameForCapturePhaseByEventType_[eventTypeKey] = "capture" + (identifier ? identifier.toCapitalized() : "") + eventType.toCapitalized());
-            };
-        })({})
+				if(!identifier) {
+	                return _methodNameForCapturePhaseByEventType_[eventType] || (_methodNameForCapturePhaseByEventType_[eventType] = capture + eventType.toCapitalized());
+				}
+				else {
+					return (_identifierMethodNameForCapturePhaseByEventType_[eventType] || (_identifierMethodNameForCapturePhaseByEventType_[eventType] = {}))[identifier] || (_identifierMethodNameForCapturePhaseByEventType_[eventType][identifier] = capture + identifier.toCapitalized() + eventType.toCapitalized());
+					//return _identifierMethodNameForCapturePhaseByEventType_[identifier] || (_identifierMethodNameForCapturePhaseByEventType_[identifier] = {})[eventType] = capture + identifier.toCapitalized() + eventType.toCapitalized());
+            	}
+			};
+        })("capture",{},{})
     },
 
     // Claimed pointer information
     _claimedPointers: {
         enumerable: false,
-        distinct: true,
-        value: {}
+        value: null
     },
 
     /**
@@ -2072,8 +2099,7 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
             }
 
 
-            var loadedWindow,
-                i,
+            var i,
                 iTarget,
                 listenerEntries,
                 j,
@@ -2091,28 +2117,10 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
                 mutableEvent,
                 touchCount;
 
-            if ("DOMContentLoaded" === eventType) {
-                loadedWindow = event.target.defaultView;
-                if (loadedWindow && this._windowsAwaitingFinalRegistration[loadedWindow.uuid]) {
-                    this._finalizeWindowRegistration(loadedWindow);
-                    // Stop listening for DOMContentLoaded on this target
-                    // Otherwise the eventManager's handleEvent will be called
-                    // again from within here when the eventManager is found
-                    // to be a listener for this event when we find the listeners
-                    event.target.removeEventListener("DOMContentLoaded", this, true);
-                }
-            }
-
             if (typeof event.propagationStopped !== "boolean") {
                 mutableEvent = MutableEvent.fromEvent(event);
             } else {
                 mutableEvent = event;
-            }
-
-            if (Element.isElement(mutableEvent.target) || mutableEvent.target instanceof Document ||  mutableEvent.target === window) {
-                eventPath = this._eventPathForDomTarget(mutableEvent.target);
-            } else {
-                eventPath = this._eventPathForTarget(mutableEvent.target);
             }
 
             // use most specific handler method available, possibly based upon the identifier of the event target
@@ -2138,6 +2146,12 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
 
             if (this._isStoringPointerEvents) {
                 this._pointerStorage.storeEvent(mutableEvent);
+            }
+
+            if (Element.isElement(mutableEvent.target) || mutableEvent.target instanceof Document ||  mutableEvent.target === window) {
+                eventPath = this._eventPathForDomTarget(mutableEvent.target);
+            } else {
+                eventPath = this._eventPathForTarget(mutableEvent.target);
             }
 
             // Capture Phase Distribution
@@ -2213,42 +2227,45 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
                 }
             }
 
-            // Bubble Phase Distribution
-            mutableEvent.eventPhase = BUBBLING_PHASE;
-            for (i = 0; eventBubbles && !mutableEvent.propagationStopped && (iTarget = eventPath[i]); i++) {
-                mutableEvent.currentTarget = iTarget;
+			if(mutableEvent.bubbles) {
 
-                listenerEntries = this.registeredEventListenersForEventType_onTarget_(eventType, iTarget);
-                if (!listenerEntries) {
-                    continue;
-                }
-                listenerEntryKeys = Object.keys(listenerEntries);
+	            // Bubble Phase Distribution
+	            mutableEvent.eventPhase = BUBBLING_PHASE;
+	            for (i = 0; eventBubbles && !mutableEvent.propagationStopped && (iTarget = eventPath[i]); i++) {
+	                mutableEvent.currentTarget = iTarget;
 
-                for (j = 0; listenerEntries && !mutableEvent.immediatePropagationStopped && (jListenerEntry = listenerEntries[listenerEntryKeys[j]]); j++) {
+	                listenerEntries = this.registeredEventListenersForEventType_onTarget_(eventType, iTarget);
+	                if (!listenerEntries) {
+	                    continue;
+	                }
+	                listenerEntryKeys = Object.keys(listenerEntries);
 
-                    if (!jListenerEntry.bubble) {
-                        continue;
-                    }
+	                for (j = 0; listenerEntries && !mutableEvent.immediatePropagationStopped && (jListenerEntry = listenerEntries[listenerEntryKeys[j]]); j++) {
 
-                    jListener = jListenerEntry.listener;
+	                    if (!jListenerEntry.bubble) {
+	                        continue;
+	                    }
 
-                    if (identifierSpecificBubbleMethodName && typeof jListener[identifierSpecificBubbleMethodName] === FUNCTION_TYPE) {
-                        jListener[identifierSpecificBubbleMethodName](mutableEvent);
-                    } else if (typeof jListener[bubbleMethodName] === FUNCTION_TYPE) {
-                        jListener[bubbleMethodName](mutableEvent);
-                    } else if (typeof jListener.handleEvent === FUNCTION_TYPE) {
-                        jListener.handleEvent(mutableEvent);
-                    } else if (typeof jListener === FUNCTION_TYPE) {
-                        jListener.call(iTarget, mutableEvent);
-                    }
-                }
-            }
+	                    jListener = jListenerEntry.listener;
 
+	                    if (identifierSpecificBubbleMethodName && typeof jListener[identifierSpecificBubbleMethodName] === FUNCTION_TYPE) {
+	                        jListener[identifierSpecificBubbleMethodName](mutableEvent);
+	                    } else if (typeof jListener[bubbleMethodName] === FUNCTION_TYPE) {
+	                        jListener[bubbleMethodName](mutableEvent);
+	                    } else if (typeof jListener.handleEvent === FUNCTION_TYPE) {
+	                        jListener.handleEvent(mutableEvent);
+	                    } else if (typeof jListener === FUNCTION_TYPE) {
+	                        jListener.call(iTarget, mutableEvent);
+	                    }
+	                }
+	            }
+	
+			}
             mutableEvent.eventPhase = NONE;
             mutableEvent.currentTarget = null;
 
             if (this._isStoringPointerEvents) {
-                this._pointerStorage.removeEvent(event);
+                this._pointerStorage.removeEvent(mutableEvent);
             }
 
             if (this.monitorDOMModificationInEventHandling) {
@@ -2256,6 +2273,8 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
                 document.body.removeEventListener("DOMAttrModified", this.domModificationEventHandler, true);
                 document.body.removeEventListener("DOMCharacterDataModified", this.domModificationEventHandler, true);
             }
+
+			mutableEvent = null;
         }
     },
 
@@ -2467,6 +2486,9 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
     registerEventHandlerForElement: {
         enumerable: false,
         value: function(anElementEventHandler, anElement) {
+	
+			//anElement.eventHandlerUUID = anElementEventHandler;
+	
             // console.log("registerEventHandlerForElement",anElementEventHandler,anElementEventHandler.uuid,anElement)
             var oldEventHandler = this.eventHandlerForElement(anElement);
             // unreference unused event handlers
@@ -2474,6 +2496,7 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
                 this.unregisterEventHandlerForElement(anElement);
             }
             this._elementEventHandlerByUUID[(anElement.eventHandlerUUID = anElementEventHandler.uuid)] = anElementEventHandler;
+	
         }
     },
 /**
@@ -2484,7 +2507,7 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
         enumerable: false,
         value: function(anElement) {
             delete this._elementEventHandlerByUUID[anElement.eventHandlerUUID];
-            delete anElement.eventHandlerUUID;
+            //anElement.eventHandlerUUID = null;
         }
     },
 /**
@@ -2495,6 +2518,7 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
     eventHandlerForElement: {
         enumerable: false,
         value: function(anElement) {
+            //return anElement.eventHandlerUUID;
             return this._elementEventHandlerByUUID[anElement.eventHandlerUUID];
         }
     },

@@ -58,45 +58,50 @@ var Selector = exports.Selector = Montage.specialize({
 
 });
 
+function getArgs(arguments) {
+    return Array.prototype.map.call(arguments, function (argument) {
+        if (typeof argument === "string") {
+            return parse(argument);
+        } else if (argument.syntax) {
+            return argument.syntax;
+        } else if (typeof argument === "object") {
+            return argument;
+        }
+    });
+}
+function instanceMethod(type) {
+    return function () {
+        var args = getArgs(arguments);
+        // invoked as instance method
+        return new (this.constructor)().initWithSyntax({
+            type: type,
+            args: [this.syntax].concat(args)
+        });
+    };
+}
+
+function classMethod(type) {
+    return function () {
+        var args = getArgs(arguments);
+        // invoked as class method
+        return new this().initWithSyntax({
+            type: type,
+            args: args
+        });
+    };
+}
+
 // generate methods on Selector for each of the tokens of the language.
 // support invocation both as class and instance methods like
 // Selector.and("a", "b") and aSelector.and("b")
-precedence.keys().forEach(function (type) {
-    Montage.defineProperty(Selector.prototype, type, {
-        value: function () {
-            var args = Array.prototype.map.call(arguments, function (argument) {
-                if (typeof argument === "string") {
-                    return parse(argument);
-                } else if (argument.syntax) {
-                    return argument.syntax;
-                } else if (typeof argument === "object") {
-                    return argument;
-                }
-            });
-            // invoked as instance method
-            return new (this.constructor)().initWithSyntax({
-                type: type,
-                args: [this.syntax].concat(args)
-            });
-        }
+var tokens = precedence.keys(), i, countI;
+for(i=0,countI=tokens.length;i<countI;i++) {
+	var type = tokens[i];
+	Montage.defineProperty(Selector.prototype, type, {
+        value: instanceMethod(type)
     });
     Montage.defineProperty(Selector, type, {
-        value: function () {
-            var args = Array.prototype.map.call(arguments, function (argument) {
-                if (typeof argument === "string") {
-                    return parse(argument);
-                } else if (argument.syntax) {
-                    return argument.syntax;
-                } else if (typeof argument === "object") {
-                    return argument;
-                }
-            });
-            // invoked as class method
-            return new this().initWithSyntax({
-                type: type,
-                args: args
-            });
-        }
+        value: classMethod(type)
     });
-});
-
+    
+}

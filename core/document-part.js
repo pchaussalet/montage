@@ -1,5 +1,5 @@
 var Montage = require("./core").Montage,
-    logger = require("./logger").logger("document-part"),
+    // logger = require("./logger").logger("document-part"),
     Promise = require("./promise").Promise,
     defaultEventManager = require("./event/event-manager").defaultEventManager;
 
@@ -8,22 +8,25 @@ var DocumentPart = Montage.specialize({
     template: {value: null},
     fragment: {value: null},
     objects: {value: null},
-    childComponents: {value: null},
+    _childComponents: {value: null},
+    childComponents: {
+        get: function() {
+			return this._childComponents || (this._childComponents = []);
+		}
+	},
     parameters: {value: null},
 
     constructor: {
         value: function DocumentPart() {
-            this.super();
+            //this.super();
         }
     },
 
     initWithTemplateAndFragment: {
         value: function(template, fragment) {
+//if (template._baseUrl == 'http://localhost:8000/test/ui/repetition/list-parameters.reel/') console.trace(template._baseUrl);
             this.template = template;
             this.fragment = fragment;
-            this.objects = null;
-            this.childComponents = [];
-            this.parameters = null;
         }
     },
 
@@ -74,7 +77,7 @@ var DocumentPart = Montage.specialize({
     loadComponentTree: {
         value: function() {
             var deferred = this._componentTreeLoadedDeferred,
-                promises;
+                promises, i, countI, childComponents = this.childComponents, self = this;
 
             if (!deferred) {
                 deferred = Promise.defer();
@@ -82,12 +85,15 @@ var DocumentPart = Montage.specialize({
 
                 promises = [];
 
-                this.childComponents.forEach(function(childComponent) {
-                    promises.push(childComponent.loadComponentTree());
-                });
+				for(i=0, countI = childComponents.length; i<countI;i++) {
+					if(!childComponents[i].canDrawGate.getField("componentTreeLoaded")) {
+	                    promises.push(childComponents[i].loadComponentTree());
+					}
+                }
 
                 Promise.all(promises).then(function() {
                     deferred.resolve();
+					self._componentTreeLoadedDeferred = null;
                 }, deferred.reject).done();
             }
 

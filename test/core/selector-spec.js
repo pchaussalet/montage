@@ -33,7 +33,7 @@ describe("core/selector-spec", function () {
                 }
             }
         });
-    })
+    });
 
     it("should deserialize", function () {
         var serialization = {
@@ -50,7 +50,7 @@ describe("core/selector-spec", function () {
         .then(function (selector) {
             expect(selector.evaluate({a: {b: 20}})).toEqual(20);
         });
-    })
+    });
 
     it("should compose with class methods", function () {
         var selector = Selector.and('a', 'b');

@@ -13,15 +13,309 @@ var Montage = require("../core/core").Montage,
     Template = require("../core/template").Template,
     DocumentResources = require("../core/document-resources").DocumentResources,
     Gate = require("../core/gate").Gate,
+	BitField = require("../core/bitfield").BitField,
     Promise = require("../core/promise").Promise,
-    logger = require("../core/logger").logger("component"),
-    drawPerformanceLogger = require("../core/logger").logger("Drawing performance").color.green(),
-    drawListLogger = require("../core/logger").logger("drawing list").color.blue(),
-    needsDrawLogger = require("../core/logger").logger("drawing needsDraw").color.violet(),
-    drawLogger = require("../core/logger").logger("drawing").color.blue(),
+    //logger = require("../core/logger").logger("component"),
+    // drawPerformanceLogger = require("../core/logger").logger("Drawing performance").color.green(),
+    // drawListLogger = require("../core/logger").logger("drawing list").color.blue(),
+    // needsDrawLogger = require("../core/logger").logger("drawing needsDraw").color.violet(),
+    // drawLogger = require("../core/logger").logger("drawing").color.blue(),
     defaultEventManager = require("../core/event/event-manager").defaultEventManager,
-    Set = require("collections/set"),
     Alias = require("../core/serialization/alias").Alias;
+var PropertyChanges = require("collections/listen/property-changes");
+var RangeChanges = require("collections/listen/range-changes");
+var observableArrayProperties = require("collections/listen/array-changes").observableArrayProperties;
+
+require("../core/extras/array");
+
+/*
+debugger;
+var testField = new BitField().initWithDelegate({bitFieldDidBecomeTrue:function(){
+	console.log("bitFieldDidBecomeTrue");
+}});
+
+function BitFieldNumber(nSize) {
+    this._value = new Uint32Array(1);
+	this._size = nSize
+}
+
+BitFieldNumber.prototype.get = function(i) {
+return (this._value[0] & i) !== 0;
+}
+
+BitFieldNumber.prototype.set = function(i) {
+this._value[0] |= (1 << i);
+}
+
+BitFieldNumber.prototype.unset = function(i) {
+this._value[0] &= ~ (1 << i)
+}
+
+testNumberField = new BitFieldNumber(10);
+
+var a, b, c, d;
+testField.setField("A",false);
+a = testField.getField("A");
+testField.setField("A",true);
+a = testField.getField("A");
+a = testField.A;
+testField.setField("B",false);
+b = testField.getField("B");
+b = testField.B;
+testField.setField("B",true);
+b = testField.getField("B");
+b = testField.B;
+
+
+testNumberField.unset(0);
+testNumberField.unset(1);
+a = testNumberField.get(0);
+testNumberField.set(0);
+a = testNumberField.get(0);
+b = testNumberField.get(1);
+testNumberField.set(1);
+b = testNumberField.get(1);
+
+
+*/
+
+	/*
+	 * Mod	ified from classList.js: Cross-browser full element.classList implementation.
+	 * 2014-07-23
+	 *
+	 * By Eli Grey, http://eligrey.com
+	 * Public Domain.
+	 * NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+	 */
+
+	/*global self, document, DOMException */
+
+	/*! @source http://purl.eligrey.com/github/classList.js/blob/master/classList.js*/
+
+	if ("document" in self) {
+
+	// Full polyfill for browsers with no classList support
+
+	var
+		  classListProp = "classList"
+		, protoProp = "prototype"
+		, strTrim = String[protoProp].trim || function () {
+			return this.replace(/^\s+|\s+$/g, "");
+		}
+		, arrIndexOf = Array[protoProp].indexOf || function (item) {
+			var
+				  i = 0
+				, len = this.length
+			;
+			for (; i < len; i++) {
+				if (i in this && this[i] === item) {
+					return i;
+				}
+			}
+			return -1;
+		}
+		// Vendors: please allow content code to instantiate DOMExceptions
+		, DOMEx = function (type, message) {
+			this.name = type;
+			this.code = DOMException[type];
+			this.message = message;
+		}
+		, checkTokenAndGetIndex = function (classList, token) {
+			if (token === "") {
+				throw new DOMEx(
+					  "SYNTAX_ERR"
+					, "An invalid or illegal string was specified"
+				);
+			}
+			if (/\s/.test(token)) {
+				throw new DOMEx(
+					  "INVALID_CHARACTER_ERR"
+					, "String contains an invalid character"
+				);
+			}
+			return arrIndexOf.call(classList, token);
+		}
+		, ClassList = function () {
+			// this._updateClassName = function () {
+			// 	elem.setAttribute("class", this.toString());
+			// };
+			return this;
+		}
+		, classListProto = ClassList[protoProp] = []
+		;
+		
+	classListProto.constructor = ClassList;	
+	Object.defineProperties(classListProto, observableArrayProperties);
+	classListProto.initFromElement = function (elem) {
+			this.add.apply(this, elem.classList);
+	};
+	
+	classListProto.updateElementClassName = function (elem) {
+			elem.setAttribute("class", this.toString());
+	};
+	
+	Object.addEach(classListProto, PropertyChanges.prototype);
+	Object.addEach(classListProto, RangeChanges.prototype);
+	
+	
+	// Most DOMException implementations don't allow calling DOMException's toString()
+	// on non-DOMExceptions. Error's toString() is sufficient here.
+	DOMEx[protoProp] = Error[protoProp];
+	classListProto.item = function (i) {
+		return this[i] || null;
+	};
+	classListProto.contains = function (token) {
+		return checkTokenAndGetIndex(this, String(token)) !== -1;
+	};
+	classListProto.emptyArray = [];
+	classListProto.add = function () {
+		var
+			  tokens = arguments
+			, i = 0
+			, l = tokens.length
+			, token
+			, updated = false
+			, index = this.length
+		;
+		//console.log("classListProto.add: tokens.length is "+tokens.length);
+		
+		do {
+			token = tokens[i] + "";
+			if (checkTokenAndGetIndex(this, token) === -1) {
+				if (!updated && this.dispatchesRangeChanges) {
+		            this.dispatchBeforeRangeChange(tokens, this.emptyArray, index);
+		        }
+				//debugger;
+				this.push(token);
+				updated = true;
+			}
+		}
+		while (++i < l);
+
+        if (updated && this.dispatchesRangeChanges) {
+            this.dispatchRangeChange(tokens, this.emptyArray, index);
+        }
+		return updated;
+	};
+	classListProto.remove = function () {
+		var
+			  tokens = arguments
+			, i = 0
+			, l = tokens.length
+			, token
+			, updated = false
+			, index
+			, j
+			, myLength = this.length
+		;
+		
+        
+		do {
+			token = tokens[i] + "";
+			index = checkTokenAndGetIndex(this, token);
+			
+			if (index !== -1 && i===0 && this.dispatchesRangeChanges) {
+	            this.dispatchBeforeRangeChange(this.emptyArray, tokens, index);
+	        }
+			
+			while (index !== -1) {
+				// j = index;
+				// do {
+				// 	this[j] = this[j+1];
+				// }
+				// while (++j < (myLength-1));
+				this.spliceOne(index);
+				updated = true;
+				index = checkTokenAndGetIndex(this, token);
+			}
+		}
+		while (++i < l);
+
+        if (updated && this.dispatchesRangeChanges) {
+            this.dispatchRangeChange(this.emptyArray, tokens, index);
+        }
+		return updated;
+	};
+	classListProto.toggle = function (token, force) {
+		token += "";
+
+		var
+			  result = this.contains(token)
+			, method = result ?
+				force !== true && "remove"
+			:
+				force !== false && "add"
+		;
+
+		if (method) {
+			this[method](token);
+		}
+
+		if (force === true || force === false) {
+			return force;
+		} else {
+			return !result;
+		}
+	};
+	classListProto.toString = function () {
+		return this.join(" ");
+	};
+
+	// There is full or partial native classList support, so just check if we need
+	// to normalize the add/remove and toggle APIs.
+
+	(function () {
+		"use strict";
+
+		var testElement = document.createElement("_");
+
+		testElement.classList.add("c1", "c2");
+
+		// Polyfill for IE 10/11 and Firefox <26, where classList.add and
+		// classList.remove exist but support only one argument at a time.
+		if (!testElement.classList.contains("c2")) {
+			var createMethod = function(method) {
+				var original = DOMTokenList.prototype[method];
+
+				DOMTokenList.prototype[method] = function(token) {
+					var i, len = arguments.length;
+
+					for (i = 0; i < len; i++) {
+						token = arguments[i];
+						original.call(this, token);
+					}
+				};
+			};
+			createMethod('add');
+			createMethod('remove');
+		}
+
+		testElement.classList.toggle("c3", false);
+
+		// Polyfill for IE 10 and Firefox <24, where classList.toggle does not
+		// support the second argument.
+		if (testElement.classList.contains("c3")) {
+			var _toggle = DOMTokenList.prototype.toggle;
+
+			DOMTokenList.prototype.toggle = function(token, force) {
+				if (1 in arguments && !this.contains(token) === !force) {
+					return force;
+				} else {
+					return _toggle.call(this, token);
+				}
+			};
+
+		}
+
+		testElement = null;
+	}());
+
+	}
+
+
+
+
+var logger = drawPerformanceLogger = drawListLogger = needsDrawLogger = drawLogger = {"isDebug":false};
 
 var ATTR_LE_COMPONENT="data-montage-le-component";
 var ATTR_LE_ARG="data-montage-le-arg";
@@ -41,7 +335,12 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
 
     constructor: {
         value: function Component() {
-            this.super();
+            if (false) console.log();
+            //this.super();
+            // this._isComponentExpanded = false;
+            // this._isTemplateLoaded = false;
+            // this._isTemplateInstantiated = false;
+            // this._isComponentTreeLoaded = false;
         }
     },
 
@@ -146,7 +445,7 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
     canDrawGate: {
         get: function() {
             if (!this._canDrawGate) {
-                this._canDrawGate = new Gate().initWithDelegate(this);
+                this._canDrawGate = new BitField().initWithDelegate(this);
                 this._canDrawGate.setField("componentTreeLoaded", false);
             }
             return this._canDrawGate;
@@ -167,7 +466,7 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
         enumerable: false,
         get: function() {
             if (!this._blockDrawGate) {
-                this._blockDrawGate = new Gate().initWithDelegate(this);
+                this._blockDrawGate = new BitField().initWithDelegate(this);
                 this._blockDrawGate.setField("element", false);
                 this._blockDrawGate.setField("drawRequested", false);
             }
@@ -604,6 +903,8 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
 
     findParentComponent: {
         value: function() {
+	
+			//console.log(loggerToString(this)+" findParentComponent()");
             var anElement = this.element,
                 aParentNode,
                 eventManager = this.eventManager;
@@ -841,14 +1142,26 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
 
                 childComponent._exitDocument();
 
-                childComponents.splice(ix, 1);
+                childComponents.spliceOne(ix);
                 childComponent._parentComponent = null;
                 childComponent._alternateParentComponent = null;
 
                 if (childComponent._addedToDrawList) {
                     childComponent._addedToDrawList = false;
-                    ix = this._drawList.indexOf(childComponent);
-                    this._drawList.splice(ix, 1);
+
+
+                    // if(this._drawList && (this._drawList.length !== this._drawListLength)) {
+					// 	debugger;
+					// }
+
+                    //ix = this._drawList.indexOf(childComponent);
+					ix = this._drawList.lastIndexOf(childComponent,this._drawListLength - (this._drawList.length+1));
+					
+                    //this._drawList.spliceOne(ix);
+                    this._drawListLength = this._drawList.splice(ix,this._drawListLength);
+					//if(this._drawList.length !== this._drawListLength) {
+					//	debugger;
+					//}
                 }
                 this.rootComponent.removeFromCannotDrawList(childComponent);
             }
@@ -862,10 +1175,16 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
      * @type {Array.<Component>}
      * @readonly
     */
+    _childComponents: {
+        enumerable: false,
+        value: null
+    },
+
     childComponents: {
         enumerable: false,
-        distinct: true,
-        value: []
+        get: function() {
+			return this._childComponents || (this._childComponents = []);
+		}
     },
 
     _needsEnterDocument: {
@@ -1172,7 +1491,7 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
     _prepareCanDraw: {
         enumerable: false,
         value: function _prepareCanDraw() {
-            if (!this._isComponentTreeLoaded) {
+            if (!this.canDrawGate.getField("componentTreeLoaded")) {
                 this.loadComponentTree().done();
             }
         }
@@ -1201,13 +1520,21 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
     _loadComponentTreeDeferred: {value: null},
     loadComponentTree: {
         value: function loadComponentTree() {
-            var self = this,
+ 			//console.log(loggerToString(this) + ".loadComponentTree");
+			console.timeStamp("loadComponentTree");
+           var self = this,
                 canDrawGate = this.canDrawGate,
                 deferred = this._loadComponentTreeDeferred;
 
-            if (!deferred) {
-                deferred = Promise.defer();
-                this._loadComponentTreeDeferred = deferred;
+				//if(!this._isComponentTreeLoaded) {
+					//console.log(loggerToString(this)+" @@@@!!!! Attempt to loadComponentTree TWICE!!!");
+					//debugger;
+				//}
+
+            if (!this.canDrawGate.getField("componentTreeLoaded")) {
+                if(!deferred) {
+					this._loadComponentTreeDeferred = deferred = Promise.defer();
+				}
 
                 canDrawGate.setField("componentTreeLoaded", false);
 
@@ -1219,32 +1546,41 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
                     this._canDraw = false;
                 }
 
-                this.expandComponent().then(function() {
-                    if (self.hasTemplate || self.shouldLoadComponentTree) {
-                        var promises = [],
-                            childComponents = self.childComponents,
-                            childComponent;
+				if(!this._isComponentExpanded) {
+	                this.expandComponent().then(function() {
+	                    if (self.hasTemplate || self.shouldLoadComponentTree) {
+	                        var promises = [],
+	                            childComponents = self.childComponents,
+	                            childComponent;
 
-                        for (var i = 0; (childComponent = childComponents[i]); i++) {
-                            promises.push(childComponent.loadComponentTree());
-                        }
+	                        for (var i = 0; (childComponent = childComponents[i]); i++) {
+								if(!childComponent.canDrawGate.getField("componentTreeLoaded")) {
+		                            promises.push(childComponent.loadComponentTree());
+								}
+	                        }
 
-                        return Promise.all(promises);
-                    }
-                }).then(function() {
-                    self._isComponentTreeLoaded = true;
-                    // When the component tree is loaded we need to draw if the
-                    // component needs to have its enterDocument() called.
-                    // This is because we explicitly avoid drawing when we set
-                    // _needsEnterDocument before the first draw because we
-                    // don't want to trigger the draw before its component tree
-                    // is loaded.
-                    if (self._needsEnterDocument) {
-                        self.needsDraw = true;
-                    }
-                    canDrawGate.setField("componentTreeLoaded", true);
-                    deferred.resolve();
-                }, deferred.reject).done();
+	                        return Promise.all(promises);
+	                    }
+	                }).then(function() {
+	                    //self._isComponentTreeLoaded = true;
+	                    // When the component tree is loaded we need to draw if the
+	                    // component needs to have its enterDocument() called.
+	                    // This is because we explicitly avoid drawing when we set
+	                    // _needsEnterDocument before the first draw because we
+	                    // don't want to trigger the draw before its component tree
+	                    // is loaded.
+	                    if (self._needsEnterDocument) {
+	                        self.needsDraw = true;
+	                    }
+	                    canDrawGate.setField("componentTreeLoaded", true);
+	                    deferred.resolve();
+						self._loadComponentTreeDeferred = null;
+						// if(self._expandComponentDeferred) {
+						// 	console.log(self.uuid+" componentTreeLoaded - Clearing self._expandComponentDeferred is "+self._expandComponentDeferred.uuid);
+						// }
+						//self._expandComponentDeferred = null;
+	                }, deferred.reject).done();
+				}
             }
             return deferred.promise;
         }
@@ -1320,21 +1656,37 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
         value: function expandComponent() {
             var self = this,
                 deferred = this._expandComponentDeferred;
+				//debugger;
+ 				//console.log(loggerToString(this) + ".expandComponent");
+	 			console.timeStamp("instantiateTemplate");
+
+				// if(this._isComponentExpanded) {
+				// 	console.log(loggerToString(this)+" @@@@!!!! Attempt to expandComponent TWICE!!!");
+				// 	//;
+				// }
 
             if (!deferred) {
+				//console.log(this.uuid+" expandComponent() - NO this._expandComponentDeferred");
                 deferred = Promise.defer();
                 this._expandComponentDeferred = deferred;
+				//console.log(this.uuid+" expandComponent() - this._expandComponentDeferred is "+this._expandComponentDeferred.uuid);
 
                 if (this.hasTemplate) {
                     this._instantiateTemplate().then(function() {
                         self._isComponentExpanded = true;
-                        self._addTemplateStyles();
+                        if(!self.constructor.areTemplateStylesInserted) self._addTemplateStyles();
                         self.needsDraw = true;
                         deferred.resolve();
-                    }, deferred.reject);
+ 						self._expandComponentDeferred = null;
+						deferred = null;
+						self = null;
+						//debugger;
+						
+                   }, deferred.reject);
                 } else {
                     this._isComponentExpanded = true;
                     deferred.resolve();
+					self._expandComponentDeferred = null;
                 }
             }
 
@@ -1425,8 +1777,12 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
     _instantiateTemplate: {
         value: function() {
             var self = this;
+            //console.log(this.templateModuleId);
+			//console.log(loggerToString(this) + "._instantiateTemplate");
             return this._loadTemplate().then(function(template) {
-                if (!self._element) {
+ 	 			console.timeStamp("instantiateTemplate");
+ 	 			//console.trace("instantiateTemplate", template._baseUrl);
+               if (!self._element) {
                     console.error("Cannot instantiate template without an element.", self);
                     return Promise.reject(new Error("Cannot instantiate template without an element.", self));
                 }
@@ -1464,9 +1820,15 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
     _loadTemplatePromise: {value: null},
     _loadTemplate: {
         value: function _loadTemplate() {
-            var self = this,
-                promise = this._loadTemplatePromise,
+ 			//console.log(loggerToString(this) + "._loadTemplate");
+           var self = this,
+               promise = this._loadTemplatePromise,
                 info;
+	 			console.timeStamp("loadTemplate");
+
+			if(this._template && this._isTemplateLoaded) {
+				console.log(loggerToString(this)+" @@@@!!!! Attempt to _loadTemplate TWICE!!!");
+			}
 
             if (!promise) {
                 info = Montage.getInfoForObject(this);
@@ -1476,7 +1838,7 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
                 .then(function(template) {
                     self._template = template;
                     self._isTemplateLoaded = true;
-
+					self._loadTemplatePromise = null;
                     return template;
                 });
             }
@@ -1633,10 +1995,11 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
 
     _getArray: {
         value: function() {
+			var pool;
             if (this._arrayObjectPool.pool == null) {
-                this._arrayObjectPool.pool = [];
-                for (var i = 0; i < this._arrayObjectPool.size; i++) {
-                    this._arrayObjectPool.pool[i] = [];
+                pool = this._arrayObjectPool.pool = [];
+                for (var i = 0, countI = this._arrayObjectPool.size; i < countI; i++) {
+                    pool[i] = [];
                 }
             }
 
@@ -1695,10 +2058,19 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
                 this.originalElement = null;
             }
 
-            if (this._drawList !== null && this._drawList.length > 0) {
+		// if (this._drawList !== null) {
+		// 	if(this._drawList.length !== this._drawListLength) {
+		// 		debugger;
+		// 	}
+		// }
+            if (this._drawList !== null && this._drawListLength > 0) {
+                //if (this._drawList !== null && this._drawList.length > 0) {
                 oldDrawList = this._drawList;
-                this._drawList = this._getArray();
-                childComponentListLength = oldDrawList.length;
+                //this._drawList = this._getArray();
+                //debugger;
+                //childComponentListLength = oldDrawList.length;
+                childComponentListLength = this._drawListLength;
+                this._drawListLength = 0;
                 for (i = 0; i < childComponentListLength; i++) {
                     childComponent = oldDrawList[i];
                     childComponent._addedToDrawList = false;
@@ -1707,9 +2079,13 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
                     } else if (drawLogger.isDebug) {
                         drawLogger.debug(loggerToString(childComponent) + " can't draw.");
                     }
+                    //oldDrawList[i] = undefined
                 }
-                this._disposeArray(oldDrawList);
+                //this._disposeArray(oldDrawList);
             }
+			// if(this._drawList && this.__drawList && this._drawListLength !== this._drawList.length){
+			// 	debugger;
+			// }
         }
     },
 
@@ -1811,6 +2187,9 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
                 styles,
                 _document;
 
+				console.timeStamp(loggerToString(this) + "._addTemplateStyles");
+				//console.log(this.constructor.name + "._addTemplateStyles "+loggerToString(this));
+
             if (part) {
                 resources = part.template.getResources();
                 _document = this.element.ownerDocument;
@@ -1820,6 +2199,7 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
                     this.rootComponent.addStylesheet(style);
                 }
             }
+			this.constructor.areTemplateStylesInserted = true;
         }
     },
 
@@ -2224,25 +2604,49 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
     },
 
     /**
-     * Contains the list of childComponents this instance is reponsible for drawing.
+     * Contains the list of childComponents this instance is responsible for drawing.
      * @private
      */
+    __drawList: {
+        value: null
+    },
     _drawList: {
         value: null
     },
-
+    _drawListLength: {
+        value: 0,
+		writable: true
+    },
     __addToDrawList: {
         enumerable: false,
         value: function(childComponent) {
-            if (this._drawList === null) {
+			// if(this._drawList && (this._drawList.length !== this._drawListLength)) {
+			// 	debugger;
+			// }
+            if (this._drawList === null || this._drawList.length == 0) {
                 this._drawList = [childComponent];
+                //this.__drawList = [childComponent];
+				this._drawListLength = 1;
                 childComponent._addedToDrawList = true;
             } else {
-                if (this._drawList.indexOf(childComponent) === -1) {
-                    this._drawList.push(childComponent);
+				//var ix1 = this._drawList.indexOf(childComponent);
+				//var ix2 = this.__drawList.lastIndexOf(childComponent,this._drawListLength);
+				var ix1 = this._drawList.lastIndexOf(childComponent,this._drawListLength - (this._drawList.length+1));
+				//var ix2 = this.__drawList.indexOf(childComponent,this._drawListLength-this.__drawList.length);
+				// if(ix1 !==  ix2) {
+				// 	debugger;
+				// }
+                if (ix1 === -1) {
+                    //this._drawList.push(childComponent);
+					this._drawList[this._drawListLength] = childComponent;
+					this._drawListLength++;
                     childComponent._addedToDrawList = true;
                 }
+				// else {
+				// 	debugger;
+				// }
             }
+//console.log(this._drawListLength, this._drawList.length, this._drawList);
         }
     },
 
@@ -2299,11 +2703,18 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
      * Variable to track this component's associated composers
      * @private
      */
-    composerList: {
-        value: [],
-        distinct: true,
-        serializable: false
+    _composerList: {
+        enumerable: false,
+        value: null
     },
+
+    composerList: {
+        enumerable: false,
+        get: function() {
+			return this._composerList || (this._composerList = []);
+		}
+    },
+
 
     /**
      * Adds the passed in composer to the component's composer list.
@@ -2365,7 +2776,7 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
             for (i = 0; i < length; i++) {
                 if (this.composerList[i].uuid === composer.uuid) {
                     this.composerList[i].unload();
-                    this.composerList.splice(i, 1);
+                    this.composerList.spliceOne(i);
                     break;
                 }
             }
@@ -2383,6 +2794,7 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
             length = composerList.length;
             for (i = 0; i < length; i++) {
                 composerList[i].unload();
+				//composerList[i] = null;
             }
             composerList.length = 0;
         }
@@ -2751,9 +3163,9 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
     classList: {
         get: function () {
             if (this._classList === null) {
-                this._classList = new Set();
+                this._classList = new ClassList();
                 this._subscribeToToClassListChanges();
-                this._initializeClassListFromElement(this.element);
+                //this._initializeClassListFromElement(this.element);
             }
             return this._classList;
         }
@@ -2769,7 +3181,9 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
                     this._unsubscribeToClassListChanges();
                 }
 
-                classList.addEach(element.classList);
+                //classList.addEach(element.classList);
+				//debugger;
+				classList.initFromElement(element);
                 this._subscribeToToClassListChanges();
             }
         }
@@ -2798,18 +3212,24 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
                 var elementClassList = this.element.classList,
                     classList = this._classList;
 
+				//classList.updateElementClassName(this.element);
+
+
                 for (var i = 0, ii = elementClassList.length, className; i < ii; i++) {
                     className = elementClassList.item(i);
-                    if (!classList.has(className)) {
+                    if (!classList.contains(className)) {
                         elementClassList.remove(className);
                         i--;
                         ii--;
                     }
                 }
+                for (var i = 0, ii = classList.length, className; i < ii; i++) {
+                    elementClassList.add(classList[i]);
+                }
 
-                this._classList.forEach(function (cssClass) {
-                    elementClassList.add(cssClass);
-                });
+                // this._classList.forEach(function (cssClass) {
+                //     elementClassList.add(cssClass);
+                // });
                 this._classListDirty = false;
             }
         }
@@ -2824,9 +3244,10 @@ var Component = exports.Component = Target.specialize(/** @lends Component# */ {
                 this._element = null;
             }
 
-            this.childComponents.forEach(function(component) {
-                component.dispose();
-            });
+            for (var childComponents = this.childComponents, i = 0; i < childComponents.length; i++) {
+                childComponents[i].dispose();
+            }
+
         }
     }
 });
@@ -2881,7 +3302,7 @@ var RootComponent = Component.specialize( /** @lends RootComponent# */{
 
     canDrawGate: {
         get: function() {
-            return this._canDrawGate || (this._canDrawGate = new Gate().initWithDelegate(this));
+            return this._canDrawGate || (this._canDrawGate = new BitField().initWithDelegate(this));
         }
     },
 
@@ -2937,9 +3358,11 @@ var RootComponent = Component.specialize( /** @lends RootComponent# */{
                     if (!this._clearNeedsDrawTimeOut) {
                         var self = this;
                         // Wait to clear the needsDraw list as components could be loaded synchronously
+						//debugger;
                         this._clearNeedsDrawTimeOut = window.setTimeout(function() {
                             self._clearNeedsDrawList();
-                        }, 0);
+ 		                    window.clearTimeout(self._clearNeedsDrawTimeOut);
+                       }, 0);
                     }
                 }
             } else {
@@ -2953,14 +3376,25 @@ var RootComponent = Component.specialize( /** @lends RootComponent# */{
 
     _clearNeedsDrawList: {
         value: function() {
+			console.timeStamp(loggerToString(this)+"._clearNeedsDrawList");
             var component, i, length, needsDrawList = this._needsDrawList;
             length = needsDrawList.length;
             for (i = 0; i < length; i++) {
                 component = needsDrawList[i];
+				// if(component._drawList) {
+				// 	if(component._drawList.length !== component._drawListLength) {
+				// 		debugger;
+				// 	}
+				// }
+				
+				// if(this._drawList && (this._drawList.length !== this._drawListLength)) {
+				// 	debugger;
+				// }
+
                 if (component.needsDraw ||
                     // Maybe the component doesn't need to draw but has child
                     // components that do.
-                    (component._drawList && component._drawList.length > 0)) {
+                    (component._drawList && component._drawListLength > 0)/*(component._drawList && component._drawList.length > 0)*/) {
                     component._addToParentsDrawList();
                 }
             }
@@ -3049,9 +3483,16 @@ var RootComponent = Component.specialize( /** @lends RootComponent# */{
     },
 
     // Create a second composer list so that the lists can be swapped during a draw instead of creating a new array every time
+    _composerListSwap: {
+        enumerable: false,
+        value: null
+    },
+
     composerListSwap: {
-        value: [],
-        distinct: true
+        enumerable: false,
+        get: function() {
+			return this._composerListSwap || (this._composerListSwap = []);
+		}
     },
 
     /*
@@ -3249,6 +3690,7 @@ var RootComponent = Component.specialize( /** @lends RootComponent# */{
 
     _drawTree: {
         value: function(timestamp) {
+			console.timeStamp("drawTree");
             var drawPerformanceStartTime;
 
             // Add all stylesheets needed by the components since last
@@ -3405,7 +3847,7 @@ var RootComponent = Component.specialize( /** @lends RootComponent# */{
                     composer.needsFrame = false;
                     composer.frame(this._frameTime);
                 }
-                composerList.length = 0;
+                composerList.splice(0, composerListLength);
                 this.composerListSwap = composerList;
             }
 
@@ -3469,6 +3911,9 @@ var RootComponent = Component.specialize( /** @lends RootComponent# */{
             for (i = 0; i < j; i++) {
                 component = needsDrawList[i];
                 component.didDraw(this._frameTime);
+                // if(component.identifier === "channelListItem") {
+                //     console.log("component %s completedFirstDraw %s", Object.hash(component) , component._completedFirstDraw);
+                // }
                 if (!component._completedFirstDraw) {
                     firstDrawEvent = document.createEvent("CustomEvent");
                     firstDrawEvent.initCustomEvent("firstDraw", true, false, null);
@@ -3516,6 +3961,9 @@ exports.__root__ = rootComponent;
 function loggerToString (object) {
     if (!object) return "NIL";
     //jshint -W106
-    return object._montage_metadata.objectName + ":" + Object.hash(object) + " id: " + object.identifier;
+
+	return Montage.getInfoForObject(object).objectName + ":" + object.uuid + " id: " + object.identifier;
+	return Montage.getInfoForObject(object).objectName + ":" + Object.hash(object) + " id: " + object.identifier;
+	//return object._montage_metadata.objectName + ":" + Object.hash(object) + " id: " + object.identifier;
     //jshint +W106
 }

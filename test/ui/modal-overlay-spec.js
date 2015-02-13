@@ -14,7 +14,7 @@ describe("ui/modal-overlay-spec", function() {
         aModalOverlay = new ModalOverlay();
         aModalOverlay.hasTemplate = false;
         aModalOverlay.element = MockDOM.element();
-        aModalOverlay.modalMaskElement = MockDOM.element();
+        aModalOverlay.modalMaskElement = document.createElement('foo');
         aModalOverlay.enterDocument(true);
 
         anotherModalOverlay = new ModalOverlay();
@@ -90,11 +90,15 @@ describe("ui/modal-overlay-spec", function() {
 
         it("should reject the show promise when hidden before shown", function() {
             anotherModalOverlay.show();
-            var promise = aModalOverlay.show();
+            var showPromise = aModalOverlay.show();
 
             aModalOverlay.hide();
 
-            expect(Promise.isRejected(promise)).toBe(true);
+            return showPromise.then(function() {
+                expect('Never should be there').toBeFalsy();
+            }, function() {
+                expect(showPromise.isRejected()).toBeTruthy();
+            });
         });
     });
 

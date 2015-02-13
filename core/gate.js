@@ -4,8 +4,9 @@
  * @requires montage/core/core
  * @requires montage/core/logger
  */
-var Montage = require("./core").Montage,
-    logger = require("./logger").logger("gate");
+var Montage = require("./core").Montage;
+    //logger = require("./logger").logger("gate");
+var logger = {"isDebug":false};
 
 /**
  * @class Gate
@@ -15,7 +16,7 @@ var Gate = exports.Gate = Montage.specialize(/** @lends Gate# */ {
 
     constructor: {
         value: function Gate() {
-            this.super();
+            //this.super();
         }
     },
 

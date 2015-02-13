@@ -12,7 +12,7 @@ var DocumentResources = Montage.specialize({
 
     constructor: {
         value: function DocumentResources() {
-            this.super();
+            //this.super();
             this._expectedStyles = [];
         }
     },
@@ -30,22 +30,22 @@ var DocumentResources = Montage.specialize({
 
     _populateWithDocument: {
         value: function(_document) {
-            var scripts = _document.querySelectorAll("script"),
+            var scripts = _document.querySelectorAll("script"), i, countI, iResource;
                 forEach = Array.prototype.forEach;
 
-            forEach.call(scripts, function(script) {
-                if (script.src) {
-                    this._addResource(this.normalizeUrl(script.src));
+            for(i=0, countI=scripts.length;i<countI;i++ ) {
+                if (scripts[i].src) {
+                    this._addResource(this.normalizeUrl(scripts[i].src));
                 }
-            }, this);
+            }
 
             var links = _document.querySelectorAll("link");
 
-            forEach.call(links, function(link) {
-                if (link.rel === "stylesheet") {
-                    this._addResource(this.normalizeUrl(link.href));
+            for(i=0, countI=links.length;i<countI;i++ ) {
+                if (links[i].rel === "stylesheet") {
+                    this._addResource(this.normalizeUrl(links[i].href));
                 }
-            }, this);
+            }
         }
     },
 

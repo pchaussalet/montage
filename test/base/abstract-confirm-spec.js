@@ -80,7 +80,9 @@ describe("test/base/abstract-confirm-spec", function () {
                     promise = aConfirm.show();
 
                 aConfirm.handleAction(event);
-                expect(Promise.isFulfilled(promise)).toBeTruthy();
+                return promise.then(function() {
+                    expect(Promise.isFulfilled(promise)).toBeTruthy();
+                });
             });
 
             it("should resolve the user action promise to 'ok' when the ok button is pressed", function() {
@@ -99,7 +101,9 @@ describe("test/base/abstract-confirm-spec", function () {
                     promise = aConfirm.show();
 
                 aConfirm.handleAction(event);
-                expect(Promise.isFulfilled(promise)).toBeTruthy();
+                return promise.then(function() {
+                    expect(Promise.isFulfilled(promise)).toBeTruthy();
+                });
             });
 
             it("should resolve the user action promise to 'cancel' when the ok button is pressed", function() {

@@ -12,7 +12,8 @@ var Map = require("collections/map");
 var Set = require("collections/set");
 
 var deprecationWarning = require("../../core/deprecate").deprecationWarning;
-var logger = require("../../core/logger").logger("repetition").color.magenta();
+//var logger = require("../../core/logger").logger("repetition").color.magenta();
+var logger = {"isDebug":false};
 
 var Observers = require("frb/observers");
 var observeProperty = Observers.observeProperty;
@@ -125,7 +126,7 @@ var Iteration = exports.Iteration = Montage.specialize( /** @lends Iteration# */
      */
     constructor: {
         value: function Iteration() {
-            this.super();
+            //this.super();
             if (logger.isDebug) {
                 logger.debug("Iteration:%s create iteration %O", Object.hash(this), this);
             }
@@ -181,11 +182,7 @@ var Iteration = exports.Iteration = Montage.specialize( /** @lends Iteration# */
             this.addOwnPropertyChangeListener("selected", this);
             this.addOwnPropertyChangeListener("_noTransition", this);
 
-            this.addPathChangeListener(
-                "index.defined() && _childComponents.defined()",
-                this,
-                "handleComponentModelChange"
-            );
+            this.addPathChangeListener("index.defined() && _childComponents.defined()", this, "handleComponentModelChange");
 
             this.cachedFirstElement = null;
 
@@ -594,7 +591,7 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
      * selection.
      * @type {boolean}
      */
-    isSelectionEnabled: {value: null},
+    isSelectionEnabled: {value: false},
 
     /**
      * A collection of the selected content.  It may be any ranged collection
@@ -702,13 +699,12 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
      */
     constructor: {
         value: function Repetition() {
-            this.super();
+            //this.super();
 
             // XXX Note: Any property added to initialize in constructor must
             // also be accounted for in _teardownIterationTemplate to reset the
             // repetition.
 
-            this.contentController = null;
             this.organizedContent = [];
             this.defineBinding("organizedContent.rangeContent()", {
                 "<-": "contentController.organizedContent"
@@ -716,7 +712,6 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
             // Determines whether the repetition listens for mouse and touch
             // events to select iterations, which involves "activating" the
             // iteration when the user touches.
-            this.isSelectionEnabled = false;
             this.defineBinding("selection", {
                 "<->": "contentController.selection"
             });
@@ -735,18 +730,10 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
             this._iterationTemplate = null;
 
             // This triggers the setup of the iteration template
-            this.addPathChangeListener(
-                this._setupRequirements,
-                this,
-                "_handleSetupRequirementsChange"
-            );
+            this.addPathChangeListener(this._setupRequirements, this, "_handleSetupRequirementsChange");
 
             // This triggers the teardown of an iteration template.
-            this.addPathChangeListener(
-                "innerTemplate",
-                this,
-                "_handleInnerTemplateChange"
-            );
+            this.addPathChangeListener("innerTemplate", this, "_handleInnerTemplateChange");
 
 
             // The state of the DOM:
@@ -770,7 +757,7 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
             // repetition delegates "contentAtCurrentIteration" to a mapping
             // from iterations to content, which it can dynamically update as
             // the iterations are reused, thereby updating the bindings.
-            this._contentForIteration = Map();
+            this._contentForIteration = Object.create(null);
             // We track the direct child nodes of every iteration so we can
             // look up which iteration a mouse or touch event occurs on, for
             // the purpose of selection tracking.
@@ -945,11 +932,14 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
             // arguments making it having diferent external objects in its
             // instances.
             iterationTemplate = this.innerTemplate.clone();
+			
+			//Shortcut
+			//iterationTemplate._markupDocumentFragment = this._markupDocumentFragment;
+            label = Montage.getInfoForObject(this).label;
+            this._iterationLabel = label + ":iteration";
+
             serialization = iterationTemplate.getSerialization();
             serializationObject = serialization.getSerializationObject();
-            label = Montage.getInfoForObject(this).label;
-
-            this._iterationLabel = label + ":iteration";
             serializationObject[this._iterationLabel] = {};
             iterationTemplate.setObjects(serializationObject);
 
@@ -1003,14 +993,13 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
      */
     _setupIterationTemplate: {
         value: function () {
-            var self = this;
-
             this._iterationTemplate = this._buildIterationTemplate();
+            this._iterationTemplate._markupDocumentFragment = null;
             // Erase the initial child component trees. The initial document
             // children will be purged on first draw.  We use the innerTemplate
             // as the iteration template and replicate it for each iteration
             // instead of using the initial DOM and components.
-            var childComponents = self.childComponents;
+            var childComponents = this.childComponents;
             var childComponent;
             var index = childComponents.length - 1;
             // pop() each component instead of shift() to avoid bubbling the
@@ -1024,12 +1013,12 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
             // Begin tracking the controller organizedContent.  We manually
             // dispatch a range change to track all the iterations that have
             // come and gone while we were not watching.
-            self.handleOrganizedContentRangeChange(self.organizedContent, [], 0);
+            this.handleOrganizedContentRangeChange(this.organizedContent, [], 0);
             // Dispatches handleOrganizedContentRangeChange:
-            self.organizedContent.addRangeChangeListener(self, "organizedContent");
+            this.organizedContent.addRangeChangeListener(this, "organizedContent");
 
-            self._canDrawInitialContent = true;
-            self.needsDraw = true;
+            this._canDrawInitialContent = true;
+            this.needsDraw = true;
 
         }
     },
@@ -1074,7 +1063,7 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
 
             // purge the existing iterations
             this._iterationTemplate = null;
-            this._contentForIteration.clear();
+            this._contentForIteration = Object.create(null);
             this._iterationForElement.clear();
             this.currentIteration = null;
             this._templateId = null;
@@ -1082,22 +1071,22 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
             this._createdIterations = 0;
             this._canDrawInitialContent = false;
             this._selectionPointer = null;
-            this.activeIterations.clear();
+            this.activeIterations.length = 0;
             this._dirtyClassListIterations.clear();
         }
     },
 
     _purgeFreeIterations: {
         value: function() {
-            for (var i = 0; i < this._freeIterations.length; i++) {
+            for (var i = 0, countI = this._freeIterations.length; i < countI; i++) {
                 var iteration = this._freeIterations[i];
-                for (var j = 0; j < iteration._childComponents.length; j++) {
+                for (var j = 0, countJ = iteration._childComponents.length; j < countJ; j++) {
                     var childComponent = iteration._childComponents[j];
                     this.removeChildComponent(childComponent);
                     childComponent.cleanupDeletedComponentTree(true); // true cancels bindings
                 }
             }
-            this._freeIterations.clear();
+            this._freeIterations.length = 0;
         }
     },
 
@@ -1129,8 +1118,7 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
 
                 // Associate the new external objects with the objects in the
                 // instantiation of argumentsTemplate.
-                externalLabels = template.getSerialization()
-                    .getExternalObjectLabels();
+                externalLabels = template.getSerialization().getExternalObjectLabels();
                 instances = template.getInstances();
 
                 labels = expansionResult.labels;
@@ -1210,7 +1198,10 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
                 promise = self._iterationTemplate.instantiateWithInstances(instances, _document)
                 .then(function (part) {
                     part.parentDocumentPart = self._ownerDocumentPart;
-                    iteration._templateDocumentPart = part;
+					//Benoit, looks like an iteration never looks again at _templateDocumentPart, commenting out
+                    //iteration._templateDocumentPart = part;
+
+					//Benoit: I'm not sure I understand why we have dcoument-part.loadComponentTree() done here. Commenting it out works in QuickReads, need to test extensively
                     part.loadComponentTree().then(function() {
                         if (logger.isDebug) {
                             logger.debug("Iteration:%s component tree loaded.", Object.hash(iteration));
@@ -1277,6 +1268,7 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
      */
     observeProperty: {
         value: function (key, emit, scope) {
+			/*
             if (key === "contentAtCurrentIteration" || key === "objectAtCurrentIteration") {
                 if (key === "contentAtCurrentIteration") {
                     deprecationWarning("contentAtCurrentIteration",":iteration.object");
@@ -1291,7 +1283,9 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
                     emit,
                     scope
                 );
-            } else if (key === "currentIteration") {
+            } else
+			*/
+			if (key === "currentIteration") {
                 deprecationWarning("currentIteration",":iteration");
                 // Shortcut since this property is sticky -- won't change in
                 // the course of instantiating an iteration and should not
@@ -1412,7 +1406,9 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
 
                 for (var i = 0; i < reusableIterationsCount; i++, index++) {
                     iterations[index].object = plus[i];
-                    contentForIteration.set(iterations[index], plus[i]);
+                    iterations[index].isDirty = true;
+                    //contentForIteration.set(iterations[index], plus[i]);
+                    contentForIteration[iterations[index].uuid] = plus[i];
                 }
 
             }
@@ -1458,7 +1454,8 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
                     iteration.object = content;
                     // This updates the "repetition.contentAtCurrentIteration"
                     // bindings.
-                    contentForIteration.set(iteration, content);
+                    //contentForIteration.set(iteration, content);
+                    contentForIteration[iterations.uuid] = content;
                     plusIterations[j] = iteration;
                 }
                 iterations.swap(index, 0, plusIterations);
@@ -1613,11 +1610,7 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
             }
 
             // Inject iterations if they are not already in the right location
-            for (
-                var index = 0;
-                index < this.iterations.length;
-                index++
-            ) {
+            for (var index = 0; index < this.iterations.length; index++) {
                 var iteration = this.iterations[index];
                 if (iteration._drawnIndex !== iteration.index && iteration.isComponentTreeLoaded()) {
                     iteration.injectIntoDocument(index);
@@ -1825,7 +1818,7 @@ var Repetition = exports.Repetition = Component.specialize(/** @lends Repetition
                 this._currentActiveIteration = null;
             }
 
-            this.activeIterations.clear();
+            this.activeIterations.length = 0;
 
             this._startX = 0;
             this._startY = 0;

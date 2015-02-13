@@ -30,11 +30,13 @@ var GenericCollection = require("collections/generic-collection");
  * @class RangeSelection
  * @private
  */
-var RangeSelection = function(content, rangeController) {
-    var self = content.clone();
+var emptyArray = [];
+Object.freeze(emptyArray);
+
+var RangeSelection = function(rangeController) {
+    var self = [];
     self.makeObservable();
     self.rangeController = rangeController;
-    self.contentEquals = content && content.contentEquals || Object.is;
 
     Object.defineProperty(self, "clone", {
         value: function(){
@@ -90,9 +92,9 @@ var RangeSelection = function(content, rangeController) {
                 // minus will be empty
                 if (plus.length === 0) {
                     // at this point if plus is empty there is nothing to do.
-                    return []; // [], but spare us an instantiation
+                    return emptyArray; // [], but spare us an instantiation
                 }
-                minus = [];
+                minus = emptyArray;
             } else {
                 minus = Array.prototype.slice.call(this, start, start + minusLength);
             }
@@ -157,21 +159,7 @@ var RangeController = exports.RangeController = Montage.specialize( /** @lends R
 
     constructor: {
         value: function RangeController(content) {
-            this.content = null;
-            this._selection = new RangeSelection([], this);
-
-            this.sortPath = null;
-            this.filterPath = null;
-            this.visibleIndexes = null;
-            this.reversed = false;
-            this.start = null;
-            this.length = null;
-
-            this.selectAddedContent = false;
-            this.deselectInvisibleContent = false;
-            this.clearSelectionOnOrderChange = false;
-            this.avoidsEmptySelection = false;
-            this.multiSelect = false;
+            this._selection = new RangeSelection(this);
 
             // The following establishes a pipeline for projecting the
             // underlying content into organizedContent.
@@ -230,6 +218,8 @@ var RangeController = exports.RangeController = Montage.specialize( /** @lends R
         }
     },
 
+    content: {value: null},
+
     // Organizing Content
     // ------------------
 
@@ -245,7 +235,7 @@ var RangeController = exports.RangeController = Montage.specialize( /** @lends R
      * Whether to reverse the order of the sorted content.
      * @type {?boolean}
      */
-    reversed: {value: null},
+    reversed: {value: false},
 
     /**
      * An FRB expression that determines how to filter content like

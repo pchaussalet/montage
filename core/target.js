@@ -13,7 +13,7 @@ exports.Target = Montage.specialize( /** @lends Target# */ {
 
     constructor: {
         value: function Target() {
-            this.super();
+            //this.super();
         }
     },
 
@@ -105,6 +105,7 @@ exports.Target = Montage.specialize( /** @lends Target# */ {
 
             targettedEvent.target = this;
             defaultEventManager.handleEvent(targettedEvent);
+            targettedEvent.target = null;
 
             return !event.defaultPrevented;
         }
@@ -124,8 +125,10 @@ exports.Target = Montage.specialize( /** @lends Target# */ {
             var event = MutableEvent.fromType(type, canBubble, cancelable, detail);
             event.target = this;
             defaultEventManager.handleEvent(event);
-
-            return !event.defaultPrevented;
+			var result = !event.defaultPrevented;
+			event._event = null;
+			event = null;
+            return result;
         }
     },
 

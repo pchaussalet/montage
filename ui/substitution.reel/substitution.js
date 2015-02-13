@@ -2,8 +2,8 @@
  * @module "montage/ui/substitution.reel"
  */
 var Slot = require("../slot.reel").Slot,
-    Promise = require("../../core/promise").Promise,
-    logger = require("../../core/logger").logger("substitution");
+    Promise = require("../../core/promise").Promise;
+    //logger = require("../../core/logger").logger("substitution");
 
 /**
  * The substitution is a structural component and it should be used when there
@@ -176,7 +176,7 @@ exports.Substitution = Slot.specialize( /** @lends Substitution# */ {
         value: function(firstTime) {
             var argumentNames;
 
-            Slot.enterDocument.apply(this, arguments);
+            this.super(firstTime);
 
             if (firstTime) {
                 argumentNames = this.getDomArgumentNames();
@@ -251,7 +251,7 @@ exports.Substitution = Slot.specialize( /** @lends Substitution# */ {
                 // If we found the switch element before finding the
                 // substitution element it means this component is inside the
                 // selected switch value.
-                if (currentElement === element) {
+                if (currentElement === element && !component.canDrawGate.getField("componentTreeLoaded")) {
                     promises.push(component.loadComponentTree());
                 }
             }

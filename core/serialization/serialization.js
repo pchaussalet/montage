@@ -15,8 +15,24 @@ var Serialization = Montage.specialize( /** @lends Serialization# */ {
     initWithString: {
         value: function(string) {
             this._serializationString = string;
+			if(this._serializationObject !== null) {
+				// Should put
+				//debugger;
+                // here...
+                console.log("ALERT");
+			}
             this._serializationObject = null;
             this._serializationLabels = null;
+
+            return this;
+        }
+    },
+
+    initWithObject_labels: {
+        value: function(object,labels) {
+            this._serializationString = null;
+            this._serializationObject = object;
+            this._serializationLabels = labels;
 
             return this;
         }
@@ -36,7 +52,8 @@ var Serialization = Montage.specialize( /** @lends Serialization# */ {
         value: function() {
             var serialization = new Serialization();
 
-            serialization.initWithString(this.getSerializationString());
+            //serialization.initWithString(this.getSerializationString());
+            serialization.initWithObject_labels(Object.clone(this._serializationObject), this._serializationLabels);
 
             return serialization;
         }
@@ -45,9 +62,19 @@ var Serialization = Montage.specialize( /** @lends Serialization# */ {
     getSerializationObject: {
         value: function() {
             if (!this._serializationObject) {
+                if (!this._serializationString) {
+                    console.log("Serialization with no _serializationObject and no _serializationString !!");
+                    // Should put
+                    // debugger;
+                    // here...
+                }
+                //console.log("Serialization "+this.uuid+": JSON.parse A");
                 this._serializationObject = JSON.parse(this._serializationString);
+                //this._serializationString = null;
+                Object.freeze(this._serializationObject);
             }
-
+            //var serializationObject = this._serializationObject;
+            //console.trace('getSerializationObject');
             return this._serializationObject;
         }
     },
@@ -310,9 +337,9 @@ var SerializationMerger = Montage.specialize(null, /** @lends SerializationMerge
 
             if (collisionTable) {
                 collisionLabels = [];
-                Object.keys(collisionTable).forEach(function(label) {
+	            for (label in collisionTable) {
                     collisionLabels.push(collisionTable[label]);
-                });
+				}
             }
 
             for (var i = 0, label; (label = labels2[i]); i++) {

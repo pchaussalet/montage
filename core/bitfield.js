@@ -5,8 +5,91 @@
  * @requires montage/core/core
  */
 
-var Montage = require("./core").Montage;
 
+
+/*
+
+Implementation with growth: https://github.com/fb55/bitfield/blob/master/index.js
+
+
+http://stackoverflow.com/questions/3435693/create-a-large-bit-field
+
+This is an extension to Matthew Crumley's post from 2010:
+
+I took Matthew's code, added pre-allocation and compared it to typed array implementations.
+
+This jsperf shows that Chrome is the fastest and sanest (I would expect Uint32Array to perform the fastest) and that IE only defined the interfaces but did not care to optimize typed arrays. The Firefox results are obscured because the console is flooded with warnings about how JSPerf "compiles" the test code.
+
+enter image description here
+
+("Other" is (my apparently very private) IE 11.)
+
+Uint8Array Implementation
+
+function BitField8(nSize) {
+    var nBytes = Math.ceil(nSize/8) | 0;
+    this.values = new Uint8Array(nBytes);
+}
+
+BitField8.prototype.get = function(i) {
+    var index = (i / 8) | 0;
+    var bit = i % 8;
+    return (this.values[index] & (1 << bit)) !== 0;
+};
+
+BitField8.prototype.set = function(i) {
+    var index = (i / 8) | 0;
+    var bit = i % 8;
+    this.values[index] |= 1 << bit;
+};
+
+BitField8.prototype.unset = function(i) {
+    var index = (i / 8) | 0;
+    var bit = i % 8;
+    this.values[index] &= ~(1 << bit);
+};
+Uint32Array Implementation
+
+function BitField32(nSize) {
+    var nNumbers = Math.ceil(nSize/32) | 0;
+    this.values = new Uint32Array(nNumbers);
+}
+
+BitField32.prototype.get = function(i) {
+    var index = (i / 32) | 0;
+    var bit = i % 32;
+    return (this.values[index] & (1 << bit)) !== 0;
+};
+
+BitField32.prototype.set = function(i) {
+    var index = (i / 32) | 0;
+    var bit = i % 32;
+    this.values[index] |= 1 << bit;
+};
+
+BitField32.prototype.unset = function(i) {
+    var index = (i / 32) | 0;
+    var bit = i % 32;
+    this.values[index] &= ~(1 << bit);
+};
+
+
+//tests:
+
+var bitfield = 0;
+var flag1 = 2 << 1;
+var flag2 = 2 << 2;
+var flagmax = 2 << 10000;
+bitfield |= flagmax
+if (bitfield & flagmax) {
+    doSomething();
+}	
+
+*/
+
+
+var Montage = require("./core").Montage,
+    deprecate = require("./deprecate");
 /**
  * The BitField object compactly stores multiple values as a short series of
  * bits.
@@ -19,7 +102,8 @@ var BitField = exports.BitField = Montage.specialize( /** @lends BitField */ {
 
     constructor: {
         value: function BitField() {
-            this.super();
+			this._fields = Object.create(null);
+            //this.super();
         }
     },
 
@@ -52,9 +136,31 @@ var BitField = exports.BitField = Montage.specialize( /** @lends BitField */ {
             var fieldName;
             this.reset();
             for (fieldName in propertyDescriptor) {
-                this.addField(fieldName, propertyDescriptor[fieldName].value);
+                this.setField(fieldName, propertyDescriptor[fieldName].value);
             }
             return this;
+        }
+    },
+
+    /**
+     * @method
+     * @param {string} delegate The delegate to be initialized.
+     * @returns itself
+    */
+    initWithDelegate: {
+        enumerable: false,
+        value: function(delegate) {
+            this.reset();
+            this.delegate = delegate;
+            return this;
+        }
+    },
+
+    addField: {
+        enumerable: false,
+        value: function(aFieldName, value) {
+            deprecate.deprecationWarning('BitField.addField', 'BitField.setField');
+            return this.setField(aFieldName, value);
         }
     },
 
@@ -64,33 +170,48 @@ var BitField = exports.BitField = Montage.specialize( /** @lends BitField */ {
      * @param {string} aFieldName The name of the field to add.
      * @param {Mixed} defaultValue The new field's default value.
      */
-    addField: {
+    setField: {
         enumerable: false,
-        value: function(aFieldName, defaultValue) {
-            if (aFieldName in this) {
-                return;
-            }
-            if (this._fieldCount >= 32) {
-                throw "BitField 32 fields limit reached.";
-            }
-            //We try to recycle slots as limited to 32bits
-            this._trueValue += (this._fields[aFieldName] = this._constantsToReuse.length ? this._constantsToReuse.shift() : (1 << this._fieldCount));
-            Montage.defineProperty(this, aFieldName, {
-                enumerable: true,
-                get: function() {
-                    return (this._value === this._trueValue);
-                },
-                set: function(value) {
-                    value ? (this._value |= this._fields[aFieldName]) : (this._value &= ~ (this._fields[aFieldName]));
-                    if (this.value) {
-                        this.callDelegateMethod();
-                    }
-                }
-            });
-            this._fieldCount++;
-            if (!! defaultValue) {
-                this[aFieldName] = true;
-            }
+        value: function(aFieldName, value) {
+            if (!(aFieldName in this._fields)) {
+	            if (this._fieldCount >= 32) {
+	                throw "BitField 32 fields limit reached.";
+	            }
+	            //We try to recycle slots as limited to 32bits
+	            this._trueValue += (this._fields[aFieldName] = this._constantsToReuse.length ? this._constantsToReuse.shift() : (1 << this._fieldCount));
+	            Object.defineProperty(this, aFieldName, {
+	                enumerable: true,
+	                get: function() {
+						    return (this._values[0] & this._fields[aFieldName]) !== 0;
+	                },
+	                set: function(value) {
+	                    value ? (this._values[0] |= this._fields[aFieldName]) : (this._values[0] &= ~ (this._fields[aFieldName]));
+	                    this.callDelegateMethod(this.value);
+	                }
+	            });
+	            this._fieldCount++;
+
+        	}
+            //this[aFieldName] = value;
+            value ? (this._values[0] |= this._fields[aFieldName]) : (this._values[0] &= ~ (this._fields[aFieldName]));
+            this.callDelegateMethod(this.value);
+
+            // if (!! value) {
+            //     this[aFieldName] = true;
+            // }
+        }
+    },
+
+    /**
+     * @method
+     * @param {Array} aFieldName The aFieldName array.
+     * @returns !table or table[aFieldName]
+     */
+    getField: {
+        enumerable: false,
+        value: function(aFieldName) {
+ 		    return (this._values[0] & this._fields[aFieldName]) !== 0;
+           	//return this[aFieldName];
         }
     },
 
@@ -119,7 +240,39 @@ var BitField = exports.BitField = Montage.specialize( /** @lends BitField */ {
      * @type {Property}
      * @default null
      */
+    _bitFieldDidBecomeTrue: {
+        enumerable: false,
+        value: "gateDidBecomeTrue"
+    },
+    _bitFieldDidBecomeFalse: {
+        enumerable: false,
+        value: "gateDidBecomeFalse"
+    },
+    _delegate: {
+        enumerable: false,
+        value: null
+    },
+    _delegateNoOp: {
+        enumerable: false,
+        value: function(){}
+    },
     delegate: {
+        enumerable: false,
+        get: function() {
+			return this._delegate;
+		},
+		set: function(value) {
+			this._delegate = value;
+			this._didBecomeTrueCallback = this._delegate[this.identifier ? (this.identifier+"DidBecomeTrue") : this._bitFieldDidBecomeTrue] || this._delegateNoOp;
+			this._didBecomeFalseCallback = this._delegate[this.identifier ? (this.identifier+"DidBecomeFalse") : this._bitFieldDidBecomeFalse] || this._delegateNoOp;
+		}
+    },
+
+    _didBecomeTrueCallback: {
+        enumerable: false,
+        value: null
+    },
+    _didBecomeFalseCallback: {
         enumerable: false,
         value: null
     },
@@ -129,10 +282,11 @@ var BitField = exports.BitField = Montage.specialize( /** @lends BitField */ {
      * @returns Nothing
      */
     callDelegateMethod: {
-        value: function() {
-            var delegateMethod;
-            if (this.delegate && typeof (delegateMethod = this.delegate.bitFieldDidBecomeTrue) === "function") {
-                delegateMethod.call(this.delegate, this);
+        value: function(value) {
+            if (this.delegate) {
+                value 
+				? this._didBecomeTrueCallback.call(this._delegate,this)
+				:  this._didBecomeFalseCallback.call(this._delegate,this);
             }
         },
         enumerable: false
@@ -144,7 +298,7 @@ var BitField = exports.BitField = Montage.specialize( /** @lends BitField */ {
     value: {
         enumerable: false,
         get: function() {
-            return (this._value === this._trueValue);
+            return (this._values[0] === this._trueValue);
         }
     },
 
@@ -153,9 +307,9 @@ var BitField = exports.BitField = Montage.specialize( /** @lends BitField */ {
         value: 0
     },
 
-    _value: {
+    _values: {
         enumerable: false,
-        value: 0
+        value: new Uint32Array(1)
     },
 
 
@@ -170,13 +324,15 @@ var BitField = exports.BitField = Montage.specialize( /** @lends BitField */ {
     reset: {
         enumerable: false,
         value: function() {
-            this._value = 0x0;
+            //this._values = 0x0;
+		    this._values = new Uint32Array(1);
+
         }
     },
 
     _fields: {
         enumerable: false,
-        value: {}
+        value:null
     },
 
     /**
@@ -189,7 +345,7 @@ var BitField = exports.BitField = Montage.specialize( /** @lends BitField */ {
                 iField,
                 result = "";
             for (i = 0; (iField = fieldNames[i]); i++) {
-                result += iField + "[" + (this._value & fieldNames[iField]) + "], ";
+                result += iField + "[" + (this._values[0] & fieldNames[iField]) + "], ";
             }
             return result;
         }

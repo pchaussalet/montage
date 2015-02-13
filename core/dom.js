@@ -212,6 +212,9 @@ var _offsetForElement = function(element) {
 };
 
 var _webKitPoint = null;
+try {
+    _webKitPoint = new WebKitPoint(0,0);
+} catch (e) {}
 
 var webkitImplementation = function() {
     exports.convertPointFromNodeToPage = function(element, point) {
@@ -265,8 +268,7 @@ var shimImplementation = function() {
     };
 };
 
-if (typeof WebKitPoint !== "undefined") {
-    _webKitPoint = new WebKitPoint(0,0);
+if (_webKitPoint) {
     webkitImplementation();
 } else {
     shimImplementation();

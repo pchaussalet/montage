@@ -31,6 +31,7 @@ var SerializationExtractor = Montage.specialize( {
                 }
             }
 
+			console.log(this.uuid+": JSON.parse");
             return JSON.parse(JSON.stringify(objects));
         }
     },

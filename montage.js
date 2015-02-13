@@ -1,3 +1,4 @@
+//console.profile("montage.js");
 /*global BUNDLE, module: false */
 if (typeof window !== "undefined") {
 
@@ -13,20 +14,17 @@ if (typeof window !== "undefined") {
     // Applications that use our loader will interact with this timeout
     // and class name to coordinate a nice loading experience. Applications that do not will
     // just go about business as usual and draw their content as soon as possible.
-    window.addEventListener("DOMContentLoaded", function() {
-        var bootstrappingDelay = 1000;
-        document._montageStartBootstrappingTimeout = setTimeout(function() {
-            document._montageStartBootstrappingTimeout = null;
+    window.addEventListener("DOMContentLoaded", function DOMContentLoadedListener() {
+    document._montageStartBootstrappingTimeout = null;
 
-            var root = document.documentElement;
-            if(!!root.classList) {
-                root.classList.add("montage-app-bootstrapping");
-            } else {
-                root.className = root.className + " montage-app-bootstrapping";
-            }
-
-            document._montageTiming.bootstrappingStartTime = Date.now();
-        }, bootstrappingDelay);
+    var root = document.documentElement;
+    if (!!root.classList) {
+        root.classList.add("montage-app-bootstrapping");
+    } else {
+        root.className = root.className + " montage-app-bootstrapping";
+    }
+    window.removeEventListener("DOMContentLoaded", DOMContentLoadedListener);
+    document._montageTiming.bootstrappingStartTime = Date.now();
     });
 
 }
@@ -264,6 +262,7 @@ if (typeof window !== "undefined") {
                     promiseRequire.inject("q", Promise);
 
                     // install the linter, which loads on the first error
+					/*
                     config.lint = function (module) {
                         montageRequire.async("core/jshint")
                         .then(function (JSHINT) {
@@ -281,6 +280,7 @@ if (typeof window !== "undefined") {
                         })
                         .done();
                     };
+					*/
 
                     // Fixe me: transition to .mr only
                     self.require = self.mr = applicationRequire;
@@ -325,11 +325,22 @@ if (typeof window !== "undefined") {
                             reverseReelExpression,
                             reverseReelFunction
                         );
-                        Object.defineProperty(
-                            object,
-                            "_montage_metadata",
-                            {
-                                value: {
+                        // Object.defineProperty(
+                        //     object,
+                        //     "_montage_metadata",
+                        //     {
+                        //         value: {
+                        //             require: require,
+                        //             module: id,
+                        //             moduleId: id, // deprecated
+                        //             property: name,
+                        //             objectName: name, // deprecated
+                        //             aliases: [name],
+                        //             isInstance: false
+                        //         }
+                        //     }
+                        // );
+						object._montage_metadata = {
                                     require: require,
                                     module: id,
                                     moduleId: id, // deprecated
@@ -337,9 +348,7 @@ if (typeof window !== "undefined") {
                                     objectName: name, // deprecated
                                     aliases: [name],
                                     isInstance: false
-                                }
-                            }
-                        );
+                                };
                     }
                 }
             };
@@ -392,11 +401,12 @@ if (typeof window !== "undefined") {
      @param config
      @param compiler
      */
+    var templateHTMLExpression = /(.*\/)?(?=[^\/]+\.html(?:\.load\.js)?$)/;
     exports.TemplateCompiler = function(config, compile) {
         return function(module) {
             if (!module.location)
                 return;
-            var match = module.location.match(/(.*\/)?(?=[^\/]+\.html(?:\.load\.js)?$)/);
+            var match = module.location.match(templateHTMLExpression);
             if (match) {
                 module.dependencies = module.dependencies || [];
                 module.exports = {
@@ -437,18 +447,21 @@ if (typeof window !== "undefined") {
         makeResolve: function () {
             var head = document.querySelector("head"),
                 baseElement = document.createElement("base"),
-                relativeElement = document.createElement("a");
+                relativeElement = document.createElement("a"),
+                isAbsoluteBaseExpression = /^[\w\-]+:/;
 
             baseElement.href = "";
+            head.appendChild(baseElement);
+
 
             return function (base, relative) {
                 var currentBaseElement = head.querySelector("base");
-                if (!currentBaseElement) {
-                    head.appendChild(baseElement);
-                    currentBaseElement = baseElement;
-                }
+                // if (!currentBaseElement) {
+                //     head.appendChild(baseElement);
+                //     currentBaseElement = baseElement;
+                // }
                 base = String(base);
-                if (!/^[\w\-]+:/.test(base)) { // isAbsolute(base)
+                if (!isAbsoluteBaseExpression.test(base)) { // isAbsolute(base)
                     throw new Error("Can't resolve from a relative location: " + JSON.stringify(base) + " " + JSON.stringify(relative));
                 }
                 var restore = currentBaseElement.href;
@@ -456,9 +469,9 @@ if (typeof window !== "undefined") {
                 relativeElement.href = relative;
                 var resolved = relativeElement.href;
                 currentBaseElement.href = restore;
-                if (currentBaseElement === baseElement) {
-                    head.removeChild(currentBaseElement);
-                }
+                // if (currentBaseElement === baseElement) {
+                //     head.removeChild(currentBaseElement);
+                // }
                 return resolved;
             };
         },
@@ -466,11 +479,12 @@ if (typeof window !== "undefined") {
         load: function (location) {
             var script = document.createElement("script");
             script.src = location;
-            script.onload = function () {
-                // remove clutter
-                script.parentNode.removeChild(script);
-            };
+            // script.onload = function (event) {
+            //     // remove clutter
+            //     event.target.parentNode.removeChild(event.target);
+            // };
             document.getElementsByTagName("head")[0].appendChild(script);
+			script = null;
         },
 
         getParams: function() {
@@ -592,11 +606,14 @@ if (typeof window !== "undefined") {
             // miniature module system
             var bootModules = {};
             function bootRequire(id) {
-                if (!bootModules[id] && definitions[id]) {
-                    var exports = bootModules[id] = {};
-                    bootModules[id] = definitions[id](bootRequire, exports) || exports;
-                }
-                return bootModules[id];
+				var result, exports, definition;
+                // if (definitions[id]  && !bootModules[id]) {
+                //     var exports = bootModules[id] = {};
+                //     return (bootModules[id] = definitions[id](bootRequire, exports) || exports);
+                // }
+                // return bootModules[id];
+
+				return (result = bootModules[id]) ? result : ((definition = definitions[id]) ? (bootModules[id] = definition(bootRequire, (exports = bootModules[id] = {})) || exports) : undefined);
             }
 
             // execute bootstrap scripts
@@ -621,9 +638,9 @@ if (typeof window !== "undefined") {
             var dependencies = [
                 "core/core",
                 "core/event/event-manager",
-                "core/serialization/deserializer/montage-reviver",
-                "core/logger",
-                "core/deprecate"
+                "core/serialization/deserializer/montage-reviver"
+                //"core/logger",
+                //"core/deprecate"
             ];
 
             var Promise = montageRequire("core/promise").Promise;
@@ -636,15 +653,15 @@ if (typeof window !== "undefined") {
                 var Montage = montageRequire("core/core").Montage;
                 var EventManager = montageRequire("core/event/event-manager").EventManager;
                 var MontageReviver = montageRequire("core/serialization/deserializer/montage-reviver").MontageReviver;
-                var logger = montageRequire("core/logger").logger;
-                var deprecate = montageRequire("core/deprecate");
+                //var logger = montageRequire("core/logger").logger;
+                //var deprecate = montageRequire("core/deprecate");
 
                 var defaultEventManager, application;
 
                 // Setup Promise's longStackTrace support option
-                logger("Promise stacktrace support", function(state) {
-                    Promise.longStackSupport = !!state;
-                });
+                // logger("Promise stacktrace support", function(state) {
+                //     Promise.longStackSupport = !!state;
+                // });
 
                 // Load the event-manager
                 defaultEventManager = new EventManager().initWithWindow(window);
@@ -668,15 +685,15 @@ if (typeof window !== "undefined") {
                 return appModulePromise.then(function(exports) {
                     var Application = exports[(applicationLocation ? applicationLocation.objectName : "Application")];
                     application = new Application();
-                    Object.defineProperty(window.document, "application", {
-                        get: deprecate.deprecateMethod(
-                            null,
-                            function () {
-                                return exports.application;
-                            },
-                            "document.application is deprecated, use require(\"montage/core/application\").application instead."
-                            )
-                    });
+                    // Object.defineProperty(window.document, "application", {
+                    //     get: deprecate.deprecateMethod(
+                    //         null,
+                    //         function () {
+                    //             return exports.application;
+                    //         },
+                    //         "document.application is deprecated, use require(\"montage/core/application\").application instead."
+                    //         )
+                    // });
                     defaultEventManager.application = application;
                     application.eventManager = defaultEventManager;
                     application._load(applicationRequire, function() {
@@ -710,3 +727,4 @@ if (typeof window !== "undefined") {
     }
 
 });
+//console.profileEnd("montage.js");

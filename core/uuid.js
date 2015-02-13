@@ -66,4 +66,9 @@ function generate() {
 
     return id.join('');
 }
+var integerId = - Math.pow(2, 53) -1; /* Future Number.MIN_SAFE_INTEGER */
+function generate() {
+	return integerId++;
+}
+
 

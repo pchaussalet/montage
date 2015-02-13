@@ -3,7 +3,8 @@
 /**
  * @module montage/ui/base/abstract-video.reel
  */
-var Component = require("../component").Component,
+var Montage = require("../../core/core").Montage,
+    Component = require("../component").Component,
     MediaController = require("../../core/media-controller").MediaController;
 
 /**
@@ -20,8 +21,7 @@ var AbstractVideo = exports.AbstractVideo = Component.specialize(/** @lends Abst
             if (this.constructor === AbstractVideo) {
                 throw new Error("AbstractVideo cannot be instantiated.");
             }
-
-            this.super();
+            Component.constructor.call(this); // super
         }
     },
 
@@ -34,10 +34,12 @@ var AbstractVideo = exports.AbstractVideo = Component.specialize(/** @lends Abst
             return this._mediaElement;
         },
         set: function (element) {
+            if (this._mediaElement) {
+                this._mediaElement.controller = null;
+            }
             this._mediaElement = element;
-
             if (this.videoController) {
-                this.videoController.mediaElement = this.mediaElement;
+                this._mediaElement.controller = this.videoController.mediaController;
             }
         }
     },
@@ -58,9 +60,8 @@ var AbstractVideo = exports.AbstractVideo = Component.specialize(/** @lends Abst
         set: function (controller) {
             if (controller) {
                 this._videoController = controller;
-
                 if (this.mediaElement) {
-                    this.videoController.mediaElement = this.mediaElement;
+                    this.mediaElement.controller = controller.mediaController;
                 }
             }
         }
@@ -289,10 +290,9 @@ var AbstractVideo = exports.AbstractVideo = Component.specialize(/** @lends Abst
                 this.addPathChangeListener("videoController.volume", this, "handleControllerVolumeChange");
 
                 if (!this.videoController) {
-                    this.videoController = new MediaController();
+                    this.videoController = Montage.create(MediaController);
                 }
-
-                this.videoController.mediaElement = this.mediaElement;
+                this.mediaElement.controller = this.videoController.mediaController;
             }
         }
     }

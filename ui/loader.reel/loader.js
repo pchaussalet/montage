@@ -4,7 +4,7 @@
 
 var Montage = require("../../core/core").Montage,
     Component = require("../component").Component,
-    logger = require("../../core/logger").logger("loader"),
+    // logger = require("../../core/logger").logger("loader"),
     defaultEventManager = require("../../core/event/event-manager").defaultEventManager,
     bootstrappingTimeoutPropertyName = "_montageStartBootstrappingTimeout",
     MONTAGE_BOOTSTRAPPER_ELEMENT_ID = "montage-app-bootstrapper",
@@ -16,6 +16,9 @@ var Montage = require("../../core/core").Montage,
     BOOTSTRAPPING = 1,
     LOADING = 2,
     LOADED = 3;
+
+	var logger = {"isDebug":false};
+
 
 /**
  @class Loader

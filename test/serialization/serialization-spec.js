@@ -6,7 +6,7 @@ var Montage = require("montage").Montage,
     Serialization = require("montage/core/serialization/serialization").Serialization,
     Promise = require("montage/core/promise").Promise;
 
-describe("reel/serialization/serialization-spec", function() {
+describe("serialization/serialization-spec", function() {
     var serialization;
 
     beforeEach(function() {

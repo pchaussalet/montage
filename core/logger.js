@@ -48,8 +48,9 @@ Logger = exports.Logger = Montage.specialize(/** @lends Logger# */ {
 
     constructor: {
         value: function Logger() {
-            this.super();
+            //this.super();
             addColorProperty(this);
+		    this.buffer = [];
         }
     },
 
@@ -92,8 +93,7 @@ Logger = exports.Logger = Montage.specialize(/** @lends Logger# */ {
      * @default {Array} []
      */
     buffer: {
-        value: [],
-        distinct: true
+        value: null,
     },
 
     /**
@@ -279,22 +279,16 @@ var SOLARIZED_COLORS = {
 /**
  * @function module:montage/core/logger#logger
  */
+var _logger = {};
 exports.logger = function(loggerName, onStateChange, dontStoreState) {
-    var logger;
-    if ((logger = loggers[loggerName]) == null) {
-        logger = new Logger().init(loggerName, onStateChange, dontStoreState);
-        Montage.defineProperty(loggers, loggerName, {
-            value: logger
-        });
-    }
-    return logger;
+    return _logger;
 };
 
 LoggerUI = Montage.specialize( /** @lends LoggerUI# */{
 
     constructor: {
         value: function LoggerUI() {
-            this.super();
+            //this.super();
         }
     },
 

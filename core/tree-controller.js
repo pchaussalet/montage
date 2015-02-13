@@ -170,8 +170,6 @@ var Node = exports.TreeControllerNode = Montage.specialize( /** @lends TreeContr
         value: null
     },
 
-    foo: {value: null},
-
     /**
      * Creates a tree controller node.
      * @param content

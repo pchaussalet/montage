@@ -53,6 +53,59 @@
     // Non-CommonJS speced extensions should be marked with an "// EXTENSION"
     // comment.
 
+/*
+	var _Module = function _Module() {};
+	_Module.prototype.id = null;
+	_Module.prototype.display = null;
+	_Module.prototype.require = null;
+	_Module.prototype.factory = null;
+	_Module.prototype.exports = null;
+	_Module.prototype.redirect = null;
+	_Module.prototype.location = null;
+	_Module.prototype.directory = null;
+	_Module.prototype.injected = null;
+	_Module.prototype.mappingRedirect = null;
+	_Module.prototype.type = null;
+	_Module.prototype.text = null;
+	_Module.prototype.dependees = null;
+	_Module.prototype.uuid = null;
+*/
+	var _Module = Object.create(Object.prototype,{
+        id: {value:null},
+        display: {value:null, writable:true},
+        require: {value:null, writable:true},
+        factory: {value:null, writable:true},
+        exports: {value:null, writable:true},
+        redirect: {value:null, writable:true},
+        location: {value:null, writable:true},
+        directory: {value:null, writable:true},
+        injected: {value:false, writable:true},
+        mappingRedirect: {value:null, writable:true},
+        type: {value:null, writable:true},
+        text: {value:null, writable:true},
+		dependees: {value:null, writable:true},
+		uuid: {value:null, writable:true}
+	});
+	
+	/*
+	Object.defineProperties(Module.prototype, {
+        id: {value:null},
+        display: {value:null, writable:true},
+        require: {value:null, writable:true},
+        factory: {value:null, writable:true},
+        exports: {value:null, writable:true},
+        redirect: {value:null, writable:true},
+        location: {value:null, writable:true},
+        directory: {value:null, writable:true},
+        injected: {value:false, writable:true},
+        mappingRedirect: {value:null, writable:true},
+        type: {value:null, writable:true},
+        text: {value:null, writable:true},
+		dependees: {value:null, writable:true},
+		uuid: {value:null, writable:true}
+	});
+*/
+
     Require.makeRequire = function (config) {
         var require;
 
@@ -80,11 +133,12 @@
         function getModuleDescriptor(id) {
             var lookupId = id.toLowerCase();
             if (!has(modules, lookupId)) {
-                modules[lookupId] = {
-                    id: id,
-                    display: (config.name || config.location) + "#" + id, // EXTENSION
-                    require: require
-                };
+				//var aModule = Object.create(_Module);
+				var aModule = {};
+                modules[lookupId] = aModule;
+                    aModule.id = id;
+                    aModule.display = (config.name || config.location) + "#" + id; // EXTENSION
+                    aModule.require = require;
             }
             return modules[lookupId];
         }
@@ -99,8 +153,11 @@
             module.location = URL.resolve(config.location, id);
             module.directory = URL.resolve(module.location, "./");
             module.injected = true;
-            delete module.redirect;
-            delete module.mappingRedirect;
+			module.redirect = void 0;
+			module.mappingRedirect = void 0;
+            // delete module.redirect;
+            // delete module.mappingRedirect;
+			
         }
 
         // Ensures a module definition is loaded, compiled, analyzed
@@ -148,14 +205,20 @@
             .then(function () {
                 // load the transitive dependencies using the magic of
                 // recursion.
-                return Promise.all(module.dependencies.map(function (depId) {
+				var dependencies =  module.dependencies
+					, promises = []
+					, iModule
+					, depId
+					,dependees;
+				for(var i=0, countI = dependencies.length;(depId = dependencies[i]);i++) {
                     depId = resolve(depId, topId);
                     // create dependees set, purely for debug purposes
-                    var module = getModuleDescriptor(depId);
-                    var dependees = module.dependees = module.dependees || {};
+                    iModule = getModuleDescriptor(depId);
+                    dependees = iModule.dependees = iModule.dependees || {};
                     dependees[topId] = true;
-                    return deepLoad(depId, topId, loading);
-                }));
+                    promises.push(deepLoad(depId, topId, loading));
+				}
+                return Promise.all(promises);
             }, function (error) {
                 module.error = error;
             });
@@ -224,7 +287,8 @@
             } catch (_error) {
                 // Delete the exports so that the factory is run again if this
                 // module is required again
-                delete module.exports;
+                //delete module.exports;
+                module.exports = void 0;
                 throw _error;
             }
 
@@ -295,15 +359,17 @@
             // (even with synchronous loaders)
             require.async = function(id) {
                 var topId = resolve(id, viaId);
-                var module = getModuleDescriptor(id);
+                //var module = getModuleDescriptor(id);
                 return deepLoad(topId, viaId)
                 .then(function () {
                     return require(topId);
                 });
             };
 
+			require._resolved = Object.create(null);
+			
             require.resolve = function (id) {
-                return normalizeId(resolve(id, viaId));
+                return this._resolved[id] || (this._resolved[id] = normalizeId(resolve(id, viaId)));
             };
 
             require.getModule = getModuleDescriptor; // XXX deprecated, use:
@@ -352,9 +418,10 @@
             require.identify = identify;
             require.inject = inject;
 
-            config.exposedConfigs.forEach(function(name) {
-                require[name] = config[name];
-            });
+			var exposedConfigs = config.exposedConfigs;
+			for(var i=0, countI=exposedConfigs.length;i<countI;i++) {
+                require[exposedConfigs[i]] = config[exposedConfigs[i]];
+			}
 
             require.config = config;
 
@@ -578,18 +645,15 @@
         }
 
         // overlay continued...
-        var layer;
-        config.overlays = config.overlays || Require.overlays;
-        config.overlays.forEach(function (engine) {
-            /*jshint -W089 */
-            if (overlay[engine]) {
-                var layer = overlay[engine];
+        var layer, overlays, engine;
+        overlays = config.overlays = config.overlays || Require.overlays;
+		for(var i=0, countI=overlays.length;i<countI;i++) {
+			if (layer = overlay[(engine = overlays[i])]) {
                 for (var name in layer) {
                     description[name] = layer[name];
                 }
             }
-            /*jshint +W089 */
-        });
+		}
         delete description.overlay;
 
         config.packagesDirectory = URL.resolve(location, "node_modules/");
@@ -663,29 +727,36 @@
 
     // Resolves CommonJS module IDs (not paths)
     Require.resolve = resolve;
+	var _resolved = Object.create(null);
+	
     function resolve(id, baseId) {
-        id = String(id);
-        var source = id.split("/");
-        var target = [];
-        if (source.length && source[0] === "." || source[0] === "..") {
-            var parts = baseId.split("/");
-            parts.pop();
-            source.unshift.apply(source, parts);
-        }
-        for (var i = 0, ii = source.length; i < ii; i++) {
-            /*jshint -W035 */
-            var part = source[i];
-            if (part === "" || part === ".") {
-            } else if (part === "..") {
-                if (target.length) {
-                    target.pop();
-                }
-            } else {
-                target.push(part);
-            }
-            /*jshint +W035 */
-        }
-        return target.join("/");
+		var resolved = _resolved[id] || (_resolved[id] = Object.create(null));
+		if(!(baseId in resolved)) {
+			//console.log("resolve("+id+","+baseId+")");
+	        id = String(id);
+	        var source = id.split("/");
+	        var target = [];
+	        if (source.length && source[0] === "." || source[0] === "..") {
+	            var parts = baseId.split("/");
+	            parts.pop();
+	            source.unshift.apply(source, parts);
+	        }
+	        for (var i = 0, ii = source.length; i < ii; i++) {
+	            /*jshint -W035 */
+	            var part = source[i];
+	            if (part === "" || part === ".") {
+	            } else if (part === "..") {
+	                if (target.length) {
+	                    target.pop();
+	                }
+	            } else {
+	                target.push(part);
+	            }
+	            /*jshint +W035 */
+	        }
+	        resolved[baseId] = target.join("/");
+		}
+		return resolved[baseId];
     }
 
     var extensionPattern = /\.([^\/\.]+)$/;
@@ -725,6 +796,7 @@
                     module.dependencies = [];
                 }
             }
+			module.text = null;
             return module;
         };
     };
@@ -737,6 +809,7 @@
                 module.text = module.text.replace(/^#!/, "//#!");
             }
             compile(module);
+			module.text = null;
         };
     };
 
@@ -785,9 +858,12 @@
             var json = (module.location || "").match(/\.json$/);
             if (json) {
                 module.exports = JSON.parse(module.text);
+				module.text = null;
                 return module;
             } else {
-                return compile(module);
+				var result = compile(module);
+				module.text = null;
+                return result;
             }
         };
     };

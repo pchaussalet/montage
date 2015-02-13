@@ -35,8 +35,9 @@
     "q": "1.0.0"
   },
   "devDependencies": {
-    "montage-testing": "~0.4.1",
-    "jshint": "~2.4.4"
+    "jshint": "~2.4.4",
+    "karma-chrome-launcher": "^0.1.7",
+    "montage-testing": "~0.4.1"
   },
   "scripts": {
     "test": "node test/node/node-spec.js",

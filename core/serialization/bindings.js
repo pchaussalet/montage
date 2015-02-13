@@ -7,23 +7,31 @@ var Bindings = require("frb"),
     Deserializer = require("../serialization").Deserializer;
 
 Serializer.defineSerializationUnit("bindings", function (serializer, object) {
-    var inputs = Bindings.getBindings(object);
-    var outputs = {};
-    var hasBindings;
+    var inputs = Bindings.getBindings(object)
+		,targetPath
+		,outputs = {}
+		,hasBindings
+		,input
+		,output
+		,sourcePath
+		,syntax
+		,label
+		,scope
+		;
 
-    for (var targetPath in inputs) {
-        var input = inputs[targetPath];
+    for (targetPath in inputs) {
+        input = inputs[targetPath];
 
-        var output = {};
+        output = {};
 
         if (("serializable" in input) && !input.serializable)
             continue;
 
-        var sourcePath = input.sourcePath;
-        var syntax = input.sourceSyntax;
+        sourcePath = input.sourcePath;
+        syntax = input.sourceSyntax;
         if (input.source !== object) {
-            var label = serializer.getObjectLabel(input.source);
-            var scope = new Scope({
+            label = serializer.getObjectLabel(input.source);
+            scope = new Scope({
                 type: "component",
                 label: label
             });
@@ -31,7 +39,9 @@ Serializer.defineSerializationUnit("bindings", function (serializer, object) {
             syntax = expand(syntax, scope);
         }
 
-        var scope = new Scope();
+		//Sounds like it would be much better to update the Scope already created
+		//scope.value = null
+        scope = new Scope();
         scope.components = serializer;
         sourcePath = stringify(syntax, scope);
 
@@ -62,36 +72,39 @@ Serializer.defineSerializationUnit("bindings", function (serializer, object) {
 Deserializer.defineDeserializationUnit("bindings", function (deserializer, object, bindings) {
 
     // normalize old and busted bindings
-    for (var targetPath in bindings) {
-        var descriptor = bindings[targetPath];
+    // for (var targetPath in bindings) {
+    //     var descriptor = bindings[targetPath];
+    // 
+    //     if (typeof descriptor !== "object") {
+    //         throw new Error("Binding descriptor must be an object, not " + typeof descriptor);
+    //         // TODO isolate the source document and produce a more useful error
+    //     }
+    // 
+    //     if ("boundObject" in descriptor) {
+    //         descriptor.source = deserializer.getObjectByLabel(descriptor.boundObject);
+    //         if (descriptor.oneway) {
+    //             descriptor["<-"] = descriptor.boundPropertyPath;
+    //         } else {
+    //             descriptor["<->"] = descriptor.boundPropertyPath;
+    //         }
+    //         delete descriptor.boundObject;
+    //         delete descriptor.boundObjectPropertyPath;
+    //         delete descriptor.oneway;
+    //     } else {
+    //         if (descriptor["<<->"]) {
+    //             console.warn("WARNING: <<-> in bindings is deprectated, use <-> only, please update now.");
+    //             descriptor["<->"] = descriptor["<<->"];
+    //             delete descriptor["<<->"];
+    //         }
+    //     }
+    // }
 
-        if (typeof descriptor !== "object") {
-            throw new Error("Binding descriptor must be an object, not " + typeof descriptor);
-            // TODO isolate the source document and produce a more useful error
-        }
-
-        if ("boundObject" in descriptor) {
-            descriptor.source = deserializer.getObjectByLabel(descriptor.boundObject);
-            if (descriptor.oneway) {
-                descriptor["<-"] = descriptor.boundPropertyPath;
-            } else {
-                descriptor["<->"] = descriptor.boundPropertyPath;
-            }
-            delete descriptor.boundObject;
-            delete descriptor.boundObjectPropertyPath;
-            delete descriptor.oneway;
-        } else {
-            if (descriptor["<<->"]) {
-                console.warn("WARNING: <<-> in bindings is deprectated, use <-> only, please update now.");
-                descriptor["<->"] = descriptor["<<->"];
-                delete descriptor["<<->"];
-            }
-        }
-    }
-
-    Bindings.defineBindings(object, bindings, {
+    object.defineBindings(bindings, {
         components: deserializer
     });
+    // Bindings.defineBindings(object, bindings, {
+    //     components: deserializer
+    // });
 
 });
 

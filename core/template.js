@@ -6,9 +6,9 @@ var Montage = require("./core").Montage,
     MontageLabeler = require("./serialization/serializer/montage-labeler").MontageLabeler,
     Promise = require("./promise").Promise,
     URL = require("./mini-url"),
-    logger = require("./logger").logger("template"),
+    //logger = require("./logger").logger("template"),
     defaultEventManager = require("./event/event-manager").defaultEventManager,
-    defaultApplication;
+    defaultApplication = require("./application").application;
 
 /**
  * @class Template
@@ -40,6 +40,29 @@ var Template = Montage.specialize( /** @lends Template# */ {
             this.__deserializer = null;
         }
     },
+	_objects: {value: null},
+	setObjects: {
+        value: function(objects) {
+            // TODO: use Serializer.formatSerialization(object|string)
+            this.objectsString = JSON.stringify(objects, null, 4);
+            //if (this._serialization) {
+                (this._serialization || (this._serialization = new Serialization())).initWithObject(objects);
+	            // Invalidate the deserializer cache since there's a new
+	            // serialization in town.
+	            this.__deserializer = null;
+            //}
+				// else {
+				// 	console.log("WEIRD");
+				// }
+
+        }
+    },
+
+    addLabelAndValue: {
+        value: function(label, value) {
+
+        }
+    },
 
     // Deserializer cache
     __deserializer: {value: null},
@@ -57,9 +80,16 @@ var Template = Montage.specialize( /** @lends Template# */ {
                         requires[label] = metadata[label].require;
                     }
                 }
-                deserializer = new Deserializer().init(this.objectsString,
-                    this._require, requires);
+				if(this._serialization && this._serialization.getSerializationObject()) {
+		            deserializer = new Deserializer().initWithSerialization(this._serialization.getSerializationObject(), this._require, requires);
+				}
+				else {
+	                deserializer = new Deserializer().init(this.objectsString, this._require, requires);
+				}
+
                 this.__deserializer = deserializer;
+				//DEBUG
+				this.__deserializer.moduleId = this._moduleId;
             }
 
             return deserializer;
@@ -76,14 +106,16 @@ var Template = Montage.specialize( /** @lends Template# */ {
     },
     getSerialization: {
         value: function() {
-            var serialiation = this._serialization;
+            var serialization = this._serialization;
 
-            if (!serialiation) {
-                serialiation = this._serialization = new Serialization();
-                serialiation.initWithString(this.objectsString);
+            if (!serialization) {
+ 				//console.log("Template "+this.uuid+": new Serialization");
+               serialization = this._serialization = new Serialization();
+                //serialization.initWithString(this.objectsString);
+				serialization.initWithObject(this._deserializer.serialization);
             }
 
-            return serialiation;
+            return serialization;
         }
     },
 
@@ -129,7 +161,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
 
     constructor: {
         value: function Template() {
-            this.super();
+            //this.super();
         }
     },
 
@@ -215,9 +247,11 @@ var Template = Montage.specialize( /** @lends Template# */ {
      */
     initWithObjectsAndDocumentFragment: {
         value: function(objects, documentFragment, _require) {
-            var self = this;
+            //var self = this;
 
             this._require = _require;
+			this._markupDocumentFragment = documentFragment;
+            //this.document = documentFragment;
             this.document = this.createHtmlDocumentWithHtml("");
             this.document.body.appendChild(
                 this.document.importNode(documentFragment, true)
@@ -241,7 +275,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
     initWithModuleId: {
         value: function(moduleId, _require) {
             var self = this;
-
+			this._moduleId = moduleId;
             this._require = _require;
 
             return this.createHtmlDocumentWithModuleId(moduleId, _require)
@@ -270,7 +304,10 @@ var Template = Montage.specialize( /** @lends Template# */ {
             clonedTemplate.setDocument(this.document);
             clonedTemplate.objectsString = this.objectsString;
             clonedTemplate._instances = Object.clone(this._instances, 1);
-
+			clonedTemplate._markupDocumentFragment = this._markupDocumentFragment;
+            
+			//Benoit Added
+			clonedTemplate._serialization = this._serialization;
             return clonedTemplate;
         }
     },
@@ -419,6 +456,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
 
             if (optimizationPromise) {
                 return optimizationPromise.then(function() {
+					self._optimizeObjectsInstantiationPromise = null;
                     return deserializer.deserialize(instances, fragment);
                 });
             } else {
@@ -426,19 +464,23 @@ var Template = Montage.specialize( /** @lends Template# */ {
             }
         }
     },
-
+	//Assuming only one targetDocument, window.document, we could use a WeakMap if needed with targetDocument as key;
+	_markupDocumentFragment: {
+		value: null
+	},
     _createMarkupDocumentFragment: {
         value: function(targetDocument) {
-            var fragment = targetDocument.createDocumentFragment(),
-                nodes = this.document.body.childNodes;
-
-            for (var i = 0, ii = nodes.length; i < ii; i++) {
-                fragment.appendChild(
-                    targetDocument.importNode(nodes[i], true)
-                );
-            }
-
-            return fragment;
+	
+			if(!this._markupDocumentFragment) {
+	            var fragment = this.document.createDocumentFragment(),
+	                nodes = this.document.body.childNodes,
+					range = this.document.createRange();
+				
+				range.selectNodeContents(this.document.body);
+			
+                this._markupDocumentFragment = range.cloneContents();
+			}
+			return targetDocument.importNode(this._markupDocumentFragment.cloneNode(true), true);
         }
     },
 
@@ -496,7 +538,8 @@ var Template = Montage.specialize( /** @lends Template# */ {
                 object,
                 owner = objects.owner || instances && instances.owner,
                 objectOwner,
-                objectLabel;
+                objectLabel,
+				metadata = this._metadata;
 
             for (var label in objects) {
                 // Don't call delegate methods on objects that were passed to
@@ -505,17 +548,21 @@ var Template = Montage.specialize( /** @lends Template# */ {
                     continue;
                 }
 
-                object = objects[label];
-                // getObjectOwner will take into account metadata that might
-                // have been set for this object. Objects in the serialization
-                // of the template might have different owners. This is true
-                // when an object in the serialization is the result of a
-                // data-param that was expanded using arguments from an external
-                // template.
-                objectOwner = this._getObjectOwner(label, owner);
-                objectLabel = this._getObjectLabel(label);
-
-                if (object) {
+                if (object = objects[label]) {
+	                // getObjectOwner will take into account metadata that might
+	                // have been set for this object. Objects in the serialization
+	                // of the template might have different owners. This is true
+	                // when an object in the serialization is the result of a
+	                // data-param that was expanded using arguments from an external
+	                // template.
+		            if (metadata && label in metadata) {
+		                objectOwner = metadata[label].owner;
+		                objectLabel = metadata[label].label;
+		            } else {
+		                objectOwner = owner;
+		                objectLabel = label;
+		            }
+	
                     if (typeof object._deserializedFromTemplate === "function") {
                         object._deserializedFromTemplate(objectOwner, objectLabel, documentPart);
                     }
@@ -561,14 +608,6 @@ var Template = Montage.specialize( /** @lends Template# */ {
             return this._instances;
         }
     },
-
-    setObjects: {
-        value: function(objects) {
-            // TODO: use Serializer.formatSerialization(object|string)
-            this.objectsString = JSON.stringify(objects, null, 4);
-        }
-    },
-
     /**
      * Add metadata to specific objects of the serialization.
      *
@@ -656,7 +695,8 @@ var Template = Montage.specialize( /** @lends Template# */ {
         value: function(_document) {
             var html = _document.documentElement.innerHTML;
 
-            this.document = this.createHtmlDocumentWithHtml(html, _document.baseURI);
+            //this.document = this.createHtmlDocumentWithHtml(html, _document.baseURI);
+			this.document = _document;
             this.clearTemplateFromElementContentsCache();
         }
     },
@@ -727,19 +767,26 @@ var Template = Montage.specialize( /** @lends Template# */ {
                 deferred = Promise.defer();
 
                 req.open("GET", url);
-                req.addEventListener("load", function() {
-                    if (req.status == 200) {
+                req.addEventListener("load", function reqLoadListener() {
+					req.removeEventListener("load",reqLoadListener);
+ 					//req.removeEventListener("error",reqErrorListener);
+                   if (req.status == 200) {
                         deferred.resolve(req.responseText);
+						deferred = null;
                     } else {
                         deferred.reject(
                             new Error("Unable to retrive '" + url + "', code status: " + req.status)
                         );
-                    }
+   						deferred = null;
+                 }
                 }, false);
-                req.addEventListener("error", function(event) {
-                    deferred.reject(
+                req.addEventListener("error", function reqErrorListener(event) {
+ 					//req.removeEventListener("load",reqLoadListener);
+					req.removeEventListener("error",reqErrorListener);
+                   deferred.reject(
                         new Error("Unable to retrive '" + url + "' with error: " + event.error + ".")
                     );
+					deferred = null;
                 }, false);
                 req.send();
 
@@ -750,9 +797,23 @@ var Template = Montage.specialize( /** @lends Template# */ {
         }
     },
 
+	_pool: {
+		value:[]
+	},
+	checkoutObject: {
+		value: function() {
+				return (this._pool.length === 0) ? (document.implementation.createHTMLDocument("")) : this._pool.pop();
+		}
+	},
+	checkinObject: {
+		value: function(object) {
+			this._pool.push(object);
+		}
+	},
     createHtmlDocumentWithHtml: {
         value: function(html, baseURI) {
-            var htmlDocument = document.implementation.createHTMLDocument("");
+			console.timeStamp("createHtmlDocumentWithHtml "+this._moduleId);
+            var htmlDocument = this.checkoutObject();
 
             htmlDocument.documentElement.innerHTML = html;
             this.normalizeRelativeUrls(htmlDocument, baseURI);
@@ -764,7 +825,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
     createHtmlDocumentWithModuleId: {
         value: function(moduleId, _require) {
             var self = this;
-
+			this._moduleId = moduleId;
             if (typeof _require !== "function") {
                 return Promise.reject(
                     new Error("Missing 'require' function to load module '" + moduleId + "'.")
@@ -783,14 +844,12 @@ var Template = Montage.specialize( /** @lends Template# */ {
     _removeObjects: {
         value: function(doc) {
             var elements,
-                selector = "script[type='" + this._SERIALIZATON_SCRIPT_TYPE + "'], link[rel='serialization']";
+                selector = "script[type='" + this._SERIALIZATON_SCRIPT_TYPE + "'], link[rel='serialization']", i, countI;
 
-            Array.prototype.forEach.call(
-                doc.querySelectorAll(selector),
-                function (element) {
-                    element.parentNode.removeChild(element);
-                }
-            );
+            elements = doc.querySelectorAll(selector);
+			for(i=0, countI=elements.length;i<countI;i++) {
+				elements[i].parentNode.removeChild(elements[i])
+			}
         }
     },
 
@@ -800,6 +859,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
                 var script = doc.createElement("script");
 
                 script.setAttribute("type", this._SERIALIZATON_SCRIPT_TYPE);
+				//console.log(this.uuid+": JSON.parse");
                 script.textContent = JSON.stringify(JSON.parse(objectsString), null, 4);
                 doc.head.appendChild(script);
             }
@@ -838,7 +898,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
             element = this.getElementById(elementId);
 
             // Clone the element contents
-            range = this.document.createRange();
+            range = (this.document || element.ownerDocument).createRange();
             range.selectNodeContents(element);
 
             // Create the new template with the extracted serialization and
@@ -886,19 +946,21 @@ var Template = Montage.specialize( /** @lends Template# */ {
 
             // Create a new serialization with the components found in the
             // element.
-            serialization.initWithString(this.objectsString);
-            labels = serialization.getSerializationLabelsWithElements(
-                elementIds);
-            extractedSerialization = serialization.extractSerialization(
-                labels, ["owner"]);
+            //serialization.initWithString(this.objectsString);
+            serialization.initWithObject_labels(this.getSerialization().getSerializationObject(),this.getSerialization().getSerializationLabels());
+
+            labels = serialization.getSerializationLabelsWithElements(elementIds);
+            extractedSerialization = serialization.extractSerialization(labels, ["owner"]);
 
             // Create the new template with the extracted serialization and
             // markup.
             template = new Template();
-            template.initWithObjectsAndDocumentFragment(
-                null, fragment, this._require);
-            template.objectsString = extractedSerialization
-                .getSerializationString();
+            template.initWithObjectsAndDocumentFragment(null, fragment, this._require);
+			// console.log("extractedSerialization.getSerializationObject()",extractedSerialization.getSerializationObject());
+			// console.log("extractedSerialization.getSerializationString()", JSON.parse(extractedSerialization.getSerializationString()));
+            template.objectsString = extractedSerialization.getSerializationString();
+            //template.setObjects(Object.create(extractedSerialization.getSerializationObject()));
+          //template._serialization = extractedSerialization;
             template._resources = this.getResources();
 
             return template;
@@ -912,7 +974,9 @@ var Template = Montage.specialize( /** @lends Template# */ {
                 labels,
                 extractedSerialization;
 
-            serialization.initWithString(this.objectsString);
+            //serialization.initWithString(this.objectsString);
+			serialization.initWithObject(this._deserializer.serialization);
+
             labels = serialization.getSerializationLabelsWithElements(
                 elementIds);
 
@@ -958,8 +1022,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
             // Expand elements.
             for (var parameterName in parameterElements) {
                 parameterElement = parameterElements[parameterName];
-                argumentElement = templateArgumentProvider.getTemplateArgumentElement(
-                    parameterName);
+                argumentElement = templateArgumentProvider.getTemplateArgumentElement(parameterName);
 
                 // Store all element ids of the argument, we need to create
                 // a serialization with the components that point to them.
@@ -981,8 +1044,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
             result.elementIdsCollisions = argumentElementsCollisionTable;
 
             // Expand objects.
-            argumentsSerialization = templateArgumentProvider
-                .getTemplateArgumentSerialization(argumentsElementIds);
+            argumentsSerialization = templateArgumentProvider.getTemplateArgumentSerialization(argumentsElementIds);
 
             argumentsSerialization.renameElementReferences(
                 argumentElementsCollisionTable);
@@ -998,16 +1060,17 @@ var Template = Montage.specialize( /** @lends Template# */ {
             // label and are considered external objects.
             willMergeObjectWithLabel = function(label) {
                 if (label.indexOf(":") > 0) {
-                    return templateArgumentProvider
-                        .resolveTemplateArgumentTemplateProperty(label);
+                    return templateArgumentProvider.resolveTemplateArgumentTemplateProperty(label);
                 }
             };
 
             objectsCollisionTable = serialization.mergeSerialization(
-                argumentsSerialization, {
+                argumentsSerialization,
+                {
                     willMergeObjectWithLabel: willMergeObjectWithLabel
                 });
-            this.objectsString = serialization.getSerializationString();
+			//Benoit, commented out as part of attempt to reduce the reliance on this.objectsString besides initial creation
+            //this.objectsString = serialization.getSerializationString();
 
             result.labels = argumentsSerialization.getSerializationLabels();
             result.labelsCollisions = objectsCollisionTable;
@@ -1168,7 +1231,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
         value: function(elementId) {
             var selector = "*[" + this._ELEMENT_ID_ATTRIBUTE + "='" + elementId + "']";
 
-            return this.document.querySelector(selector);
+            return (this.document || this._markupDocumentFragment).querySelector(selector);
         }
     },
 
@@ -1177,6 +1240,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
             var _document = this.document;
 
             this._removeObjects(_document);
+			//debugger;
             this._addObjects(_document, this.objectsString);
 
             return this._getDoctypeString(_document.doctype) + "\n" +
@@ -1242,6 +1306,7 @@ var Template = Montage.specialize( /** @lends Template# */ {
             this._baseUrl = template._baseUrl;
             this._document = template._document;
             this.objectsString = template.objectsString;
+            this._serialization = template._serialization;
             this._instances = template._instances;
             this._templateFromElementContentsCache = template._templateFromElementContentsCache;
             this._metadata = template._metadata;
@@ -1341,7 +1406,8 @@ var TemplateResources = Montage.specialize( /** @lends TemplateResources# */ {
 
     hasResources: {
         value: function() {
-            return this.getStyles().length > 0 || this.getScripts().length > 0;
+			var styles = this.getStyles(), scripts = this.getScripts();
+            return (styles && styles.length > 0) || (scripts && scripts.length > 0);
         }
     },
 
@@ -1370,8 +1436,7 @@ var TemplateResources = Montage.specialize( /** @lends TemplateResources# */ {
                 template,
                 templateScripts;
 
-            if (!scripts) {
-                template = this.template;
+            if (!scripts && (template = this.template).document) {
 
                 scripts = this._resources.scripts = [];
                 templateScripts = template.document.querySelectorAll("script");
@@ -1438,7 +1503,9 @@ var TemplateResources = Montage.specialize( /** @lends TemplateResources# */ {
             return script;
         }
     },
-
+	styleSelector: {
+		value: 'link[rel="stylesheet"], style'
+	},
     getStyles: {
         value: function() {
             var styles = this._resources.styles,
@@ -1446,11 +1513,9 @@ var TemplateResources = Montage.specialize( /** @lends TemplateResources# */ {
                 templateStyles,
                 styleSelector;
 
-            if (!styles) {
-                styleSelector = 'link[rel="stylesheet"], style';
-                template = this.template;
+            if (!styles && (template = this.template).document) {
 
-                templateStyles = template.document.querySelectorAll(styleSelector);
+                templateStyles = template.document.querySelectorAll(this.styleSelector);
 
                 styles = Array.prototype.slice.call(templateStyles, 0);
                 this._resources.styles = styles;
@@ -1515,14 +1580,13 @@ function instantiateDocument(_document, _require, instances) {
         template = new Template(),
         html = _document.documentElement.outerHTML,
         part = new DocumentPart(),
-        clonedDocument,
         templateObjects,
         rootElement = _document.documentElement;
 
-    // Setup a template just like we'd do for a document in a template
-    clonedDocument = template.createHtmlDocumentWithHtml(html, _document.location.href);
+		console.timeStamp("instantiateDocument "+this._moduleId);
 
-    return template.initWithDocument(clonedDocument, _require)
+    // Setup a template just like we'd do for a document in a template
+    return template.initWithDocument(_document, _require)
     .then(function() {
         template.setBaseUrl(_document.location.href);
         // Instantiate it using the document given since we don't want to clone

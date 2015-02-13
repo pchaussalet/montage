@@ -5,27 +5,31 @@ var Serializer = require("montage/core/serialization").Serializer;
 var Deserializer = require("montage/core/serialization").Deserializer;
 
 describe("meta/module-blueprint-spec", function () {
+    var blueprintSerialization;
 
-    var blueprintSerialization = {
-        "blueprint_one_a": {
-            "prototype": "montage/core/meta/property-blueprint",
-            "properties": {
-                "name": "a",
-                "blueprint": {"@": "root"}
+
+    beforeEach(function() {
+        blueprintSerialization = {
+            "blueprint_one_a": {
+                "prototype": "montage/core/meta/property-blueprint",
+                "properties": {
+                    "name": "a",
+                    "blueprint": {"@": "root"}
+                }
+            },
+            "root": {
+                "prototype": "montage/core/meta/module-blueprint",
+                "properties": {
+                    "name": "One",
+                    "propertyBlueprints": [
+                        {"@": "blueprint_one_a"}
+                    ],
+                    "module": {"%": "meta/module-blueprint-spec"},
+                    "exportName": "One"
+                }
             }
-        },
-        "root": {
-            "prototype": "montage/core/meta/module-blueprint",
-            "properties": {
-                "name": "One",
-                "propertyBlueprints": [
-                    {"@": "blueprint_one_a"}
-                ],
-                "module": {"%": "meta/module-blueprint-spec"},
-                "exportName": "One"
-            }
-        }
-    };
+        };
+    });
 
     describe("ModuleBlueprint", function () {
 

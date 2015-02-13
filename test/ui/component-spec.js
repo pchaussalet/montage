@@ -1001,7 +1001,7 @@ TestPageLoader.queueTest("draw/draw", function(testPage) {
                     template = new Template(),
                     component = new Component();
 
-                return template.initWithHtml(templateHtml)
+                return template.initWithHtml(templateHtml, require)
                 .then(function() {
                     var two,
                         element;
@@ -1022,7 +1022,7 @@ TestPageLoader.queueTest("draw/draw", function(testPage) {
                     template = new Template(),
                     component = new Component();
 
-                return template.initWithHtml(templateHtml)
+                return template.initWithHtml(templateHtml, require)
                 .then(function() {
                     var one,
                         element;
@@ -1043,7 +1043,7 @@ TestPageLoader.queueTest("draw/draw", function(testPage) {
                     template = new Template(),
                     component = new Component();
 
-                return template.initWithHtml(templateHtml)
+                return template.initWithHtml(templateHtml, require)
                 .then(function() {
                     var one,
                         element;
@@ -1064,7 +1064,7 @@ TestPageLoader.queueTest("draw/draw", function(testPage) {
                     template = new Template(),
                     component = new Component();
 
-                return template.initWithHtml(templateHtml)
+                return template.initWithHtml(templateHtml, require)
                 .then(function() {
                     var two,
                         element;
@@ -1212,7 +1212,7 @@ TestPageLoader.queueTest("draw/draw", function(testPage) {
                 var aComponent;
                 it("should update the classList when the element is set", function () {
                     aComponent = Component.specialize( {hasTemplate: { value: false}}).create();
-                    var anElement = MockDOM.element();
+                    var anElement = document.createElement('bar');
                     anElement.classList.add("foo");
                     expect(aComponent.classList.contains("foo")).toBeFalsy();
                     aComponent.element = anElement;

@@ -1216,10 +1216,11 @@ describe("serialization/montage-deserializer-spec", function() {
                 // should never execute
                 expect(true).toBe(false);
             }, function(reason) {
+                console.log('FOO');
                 expect(reason).toBeDefined();
-            }).fail(function(reason) {
-                console.log(reason.stack);
-                expect("test").toBe("executed");
+            //}).fail(function(reason) {
+            //    console.log(reason.stack);
+            //    expect("test").toBe("executed");
             });
         });
 
@@ -1227,8 +1228,7 @@ describe("serialization/montage-deserializer-spec", function() {
             var serializationString = "{root:}";
 
             try {
-                deserializer.init(
-                    serializationString, require);
+                deserializer.init(serializationString, require);
                 // should never execute
                 expect(true).toBe(false);
             } catch (ex) {

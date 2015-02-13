@@ -1,12 +1,8 @@
 var Montage = require("../../core").Montage;
-var Interpreter = require("mousse/deserialization/interpreter").Interpreter;
 var Deserializer = require("mousse/deserialization/deserializer").Deserializer;
 var MontageInterpreter = require("./montage-interpreter").MontageInterpreter;
 var MontageReviver = require("./montage-reviver").MontageReviver;
 var Promise = require("../../promise").Promise;
-var JSHINT = require("../../jshint").JSHINT;
-
-var logger = require("../../logger").logger("montage-deserializer");
 
 var MontageDeserializer = Montage.specialize.call(Deserializer, {
     _interpreter: {value: null},
@@ -22,8 +18,7 @@ var MontageDeserializer = Montage.specialize.call(Deserializer, {
             }
 
             Deserializer.call(this, serializationString);
-            this._origin;
-            this._serialization = null;
+            this._origin = origin;
             this._interpreter = new MontageInterpreter()
                 .init(_require, objectRequires);
 
@@ -31,16 +26,21 @@ var MontageDeserializer = Montage.specialize.call(Deserializer, {
         }
     },
 
+    initWithSerialization: {
+        value: function(serialization, _require, objectRequires, origin) {
+			this._serialization = serialization;
+            this._origin = origin;
+            this._interpreter = new MontageInterpreter()
+                .init(_require, objectRequires);
+
+            return this;
+        }
+    },
+
+
     serialization: {
         get: function() {
-            var serialization = this._serialization;
-
-            if (!serialization) {
-                serialization = JSON.parse(this._serializationString);
-                this._serialization = serialization;
-            }
-
-            return serialization;
+            return this._serialization ? this._serialization : (this._serialization = JSON.parse(this._serializationString));
         }
     },
 
@@ -49,21 +49,20 @@ var MontageDeserializer = Montage.specialize.call(Deserializer, {
             var serialization;
 
             try {
-                serialization = JSON.parse(this._serializationString);
+                serialization = this.serialization;
+                //serialization = Object.create(this.serialization);
+                //serialization = JSON.parse(this._serializationString);
+                return this._interpreter.instantiate(serialization, instances, element);
             } catch (error) {
-                return Promise.reject(error);
+                 return Promise.reject(error);
             }
-
-            return this._interpreter.instantiate(
-                serialization, instances, element);
+			//console.log("deserialize ",this.moduleId);
         }
     },
 
     preloadModules: {
         value: function() {
-            var serialization = JSON.parse(this._serializationString);
-
-            return this._interpreter.preloadModules(serialization);
+            return this._interpreter.preloadModules(this.serialization);
         }
     },
 
@@ -85,7 +84,7 @@ var MontageDeserializer = Montage.specialize.call(Deserializer, {
     isSerializationStringValid: {
         value: function(serializationString) {
             try {
-                JSON.parse(serializationString);
+                this._serialization = JSON.parse(serializationString);
                 return true;
             } catch (ex) {
                 return false;
@@ -95,33 +94,44 @@ var MontageDeserializer = Montage.specialize.call(Deserializer, {
 
     _formatSerializationSyntaxError: {
         value: function(source) {
-            var gutterPadding = "   ",
-                origin = this._origin,
-                message,
-                error,
-                lines,
-                gutterSize,
-                line;
+	
+	        return require.async("../../jshint")
+            .then(function(exports) {
+                JSHINT = exports.JSHINT;
 
-            if (!JSHINT(source)) {
-                error = JSHINT.errors[0];
-                lines = source.split("\n");
-                gutterSize = (gutterPadding + lines.length).length;
-                line = error.line - 1;
+	            var gutterPadding = "   ",
+	                origin = this._origin,
+	                message,
+	                error,
+	                lines,
+	                gutterSize,
+	                line;
 
-                for (var i = 0, l = lines.length; i < l; i++) {
-                    lines[i] = (new Array(gutterSize - (i + 1 + "").length + 1)).join(i === line ? ">" : " ") +
-                        (i + 1) + " " + lines[i];
-                }
-                message = "Syntax error at line " + error.line +
-                    (origin ? " from " + origin : "") + ":\n" +
-                    error.evidence + "\n" + error.reason + "\n" +
-                    lines.join("\n");
-            } else {
-                message = "Syntax error in the serialization but not able to find it!\n" + source;
-            }
+	            if (!JSHINT(source)) {
+	                error = JSHINT.errors[0];
+	                lines = source.split("\n");
+	                gutterSize = (gutterPadding + lines.length).length;
+	                line = error.line - 1;
 
-            return message;
+	                for (var i = 0, l = lines.length; i < l; i++) {
+	                    lines[i] = (new Array(gutterSize - (i + 1 + "").length + 1)).join(i === line ? ">" : " ") +
+	                        (i + 1) + " " + lines[i];
+	                }
+	                message = "Syntax error at line " + error.line +
+	                    (origin ? " from " + origin : "") + ":\n" +
+	                    error.evidence + "\n" + error.reason + "\n" +
+	                    lines.join("\n");
+	            } else {
+	                message = "Syntax error in the serialization but not able to find it!\n" + source;
+	            }
+
+	            return message;
+
+            });
+    
+	
+	
+	
         }
     }
 

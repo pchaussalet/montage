@@ -31,18 +31,15 @@ POSSIBILITY OF SUCH DAMAGE.
 var Montage = require("montage").Montage,
     BitField = require("montage/core/bitfield").BitField;
 
-describe("bitfield-spec",
-function() {
-    describe("creating empty bitfield",
-    function() {
-        var bitField = new BitField();
-        it("should be true",
-        function() {
+describe("bitfield-spec", function() {
+    describe("creating empty bitfield", function() {
+        it("should be true", function() {
+            var bitField = new BitField();
             expect(bitField.value).toBeTruthy();
         });
     });
-    describe("creation with four false fields",
-    function() {
+
+    describe("creation with four false fields", function() {
         var bitField;
 
         beforeEach(function() {
@@ -62,47 +59,62 @@ function() {
             });
         });
 
-        it("should have the expected field count",
-        function() {
+        it("should have the expected field count", function() {
             expect(bitField._fieldCount).toEqual(4);
         });
 
-        describe("set one of its fields to true",
-        function() {
-            beforeEach(function() {
+        describe("set one of its fields to true", function() {
+            it("should be false", function() {
                 bitField.B = true;
-            });
-            afterEach(function() {
-                bitField.B = false;
-            });
-            it("should be false",
-            function() {
                 expect(bitField.value).toBeFalsy();
             });
         });
 
-        describe("set all of its fields to true",
-        function() {
-            beforeEach(function() {
+        describe("set all of its fields to true", function() {
+
+            it("should be true", function() {
                 bitField.A = true;
                 bitField.B = true;
                 bitField.C = true;
                 bitField.D = true;
-            });
-            it("should be true",
-            function() {
                 expect(bitField.value).toBeTruthy();
             });
-            describe("add a false field",
-            function() {
-                beforeEach(function() {
-                    bitField.addField("E");
-                });
-                it("should be false",
-                function() {
+
+            describe("add a false field", function() {
+
+                it("should be false", function() {
+                    bitField.setField("E");
                     expect(bitField.value).toBeFalsy();
                 });
             });
         });
+    });
+
+    describe("old API deprecation", function() {
+        var oldConsole;
+        beforeEach(function() {
+            oldConsole = window.console;
+            window.console = {
+                warnArguments: null,
+                warn: function() {
+                    this.warnArguments = arguments;
+                }
+            };
+        });
+
+        afterEach(function() {
+            window.console = oldConsole;
+        });
+
+        it("should warn about addField method being deprecated", function() {
+            var bitField = new BitField();
+
+            bitField.addField('FOO');
+
+            expect(window.console.warnArguments).not.toBeNull();
+            expect(window.console.warnArguments.length).toEqual(2);
+            expect(window.console.warnArguments[0]).toEqual("BitField.addField is deprecated, use BitField.setField instead.");
+        });
+
     });
 });

@@ -1,5 +1,5 @@
 var Montage = require("montage").Montage,
-    Bindings = require("montage/core/bindings").Bindings;
+    Bindings = require("montage/core/core").Bindings;
 
 describe("test/core/super-spec", function () {
     var Vehicle, Car, Beetle,
@@ -1107,6 +1107,7 @@ describe("test/core/super-spec", function () {
                         Bindings.defineBinding(vehicle, "forward", {"<->": "foo"});
                         vehicle.foo = "BOO"
                     });
+                    
                     it("calling forward on vehicle", function () {
                         vehicle.forward;
                         expect(calledSpy).toContain("vehicleSpy");
@@ -1157,8 +1158,9 @@ describe("test/core/super-spec", function () {
                 describe("binding on method itself", function () {
                     beforeEach(function () {
                         Bindings.defineBinding(car, "forward", {"<->": "foo"});
-                        car.foo = "BOO"
+                        car.foo = "BOO";
                     });
+
                     it("calling forward on vehicle", function () {
                         vehicle.forward;
                         expect(calledSpy).toContain("vehicleSpy");

@@ -121,7 +121,7 @@ var PressComposer = exports.PressComposer = Composer.specialize(/** @lends Press
     // Optimisation so that we don't set a timeout if we do not need to
     addEventListener: {
         value: function(type, listener, useCapture) {
-            Composer.addEventListener.call(this, type, listener, useCapture);
+            this.super(type, listener, useCapture);
             if (type === "longPress") {
                 this._shouldDispatchLongPress = true;
             }

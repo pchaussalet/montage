@@ -5,7 +5,7 @@ var MontageBuilder = require("./montage-builder").MontageBuilder;
 var MontageLabeler = require("./montage-labeler").MontageLabeler;
 var MontageVisitor = require("./montage-visitor").MontageVisitor;
 
-var logger = require("../../logger").logger("montage-serializer");
+//var logger = require("../../logger").logger("montage-serializer");
 
 var MontageSerializer = Montage.specialize.call(Serializer, {
     _require: {value: null},

@@ -1,8 +1,8 @@
 /**
  * @module montage/ui/condition.reel
  */
-var Component = require("../component").Component,
-    logger = require("../../core/logger").logger("condition");
+var Component = require("../component").Component;
+    //logger = require("../../core/logger").logger("condition");
 
 /**
  * The condition component shows its DOM content when its
@@ -35,7 +35,7 @@ exports.Condition = Component.specialize( /** @lends Condition# */ {
 
     constructor: {
         value: function Condition() {
-            this.super();
+            //this.super();
         }
     },
 
