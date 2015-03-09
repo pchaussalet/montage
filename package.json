@@ -26,17 +26,16 @@
     }
   },
   "dependencies": {
-    "collections": "~1.2.1",
-    "frb": "~0.2.18",
+    "collections": "pchaussalet/collections#663a9a17d6fea78f486dc858a9d876a6854745e8",
+    "frb": "pchaussalet/frb#4ce382ebc84310e32e30e344873d310970c308c0",
     "mr": "~0.15.3",
-    "mousse": "~0.3.0",
+    "mousse": "pchaussalet/mousse#910d22ca9993bebf76bd843b6a7b9aaa1d340fef",
     "htmlparser2": "~3.0.5",
     "q-io": "~1.11.0",
     "q": "1.0.0"
   },
   "devDependencies": {
     "jshint": "~2.4.4",
-    "karma-chrome-launcher": "^0.1.7",
     "montage-testing": "~0.4.1"
   },
   "scripts": {
